@@ -18,7 +18,6 @@ package io.atomix.primitive;
 
 import io.atomix.cluster.ClusterMembershipService;
 import io.atomix.cluster.messaging.ClusterCommunicationService;
-import io.atomix.cluster.messaging.ClusterEventService;
 import io.atomix.primitive.partition.PartitionGroupTypeRegistry;
 import io.atomix.primitive.partition.PartitionService;
 import io.atomix.primitive.protocol.PrimitiveProtocolTypeRegistry;
@@ -48,13 +47,6 @@ public interface PrimitiveManagementService {
    * @return the cluster communication service
    */
   ClusterCommunicationService getCommunicationService();
-
-  /**
-   * Returns the cluster event service.
-   *
-   * @return the cluster event service
-   */
-  ClusterEventService getEventService();
 
   /**
    * Returns the primitive serialization service.

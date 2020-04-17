@@ -371,7 +371,7 @@ public final class Broker implements AutoCloseable {
           requestHandler.getPushDeploymentRequestHandler();
 
       final LongPollingJobNotification jobsAvailableNotification =
-          new LongPollingJobNotification(atomix.getEventService());
+          new LongPollingJobNotification(atomix.getCommunicationService());
 
       return EngineProcessors.createEngineProcessors(
           processingContext,

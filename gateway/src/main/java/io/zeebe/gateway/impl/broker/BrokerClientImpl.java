@@ -10,7 +10,6 @@ package io.zeebe.gateway.impl.broker;
 import io.atomix.cluster.AtomixCluster;
 import io.atomix.cluster.ClusterMembershipEvent;
 import io.atomix.cluster.ClusterMembershipEvent.Type;
-import io.atomix.cluster.messaging.Subscription;
 import io.zeebe.gateway.Loggers;
 import io.zeebe.gateway.impl.broker.cluster.BrokerTopologyManager;
 import io.zeebe.gateway.impl.broker.cluster.BrokerTopologyManagerImpl;
@@ -42,7 +41,6 @@ public final class BrokerClientImpl implements BrokerClient {
   private final boolean ownsActorScheduler;
   private final BrokerRequestManager requestManager;
   private boolean isClosed;
-  private Subscription jobAvailableSubscription;
 
   public BrokerClientImpl(final GatewayCfg configuration, final AtomixCluster atomixCluster) {
     this(configuration, atomixCluster, null);
@@ -112,10 +110,6 @@ public final class BrokerClientImpl implements BrokerClient {
     doAndLogException(topologyManager::close);
     LOG.debug("topology manager closed");
 
-    if (jobAvailableSubscription != null) {
-      jobAvailableSubscription.close();
-    }
-
     if (ownsActorScheduler) {
       try {
         actorScheduler.stop().get(15, TimeUnit.SECONDS);
@@ -169,16 +163,15 @@ public final class BrokerClientImpl implements BrokerClient {
   @Override
   public void subscribeJobAvailableNotification(
       final String topic, final Consumer<String> handler) {
-    jobAvailableSubscription =
-        atomixCluster
-            .getEventService()
-            .subscribe(
-                topic,
-                msg -> {
-                  handler.accept((String) msg);
-                  return CompletableFuture.completedFuture(null);
-                })
-            .join();
+    atomixCluster
+        .getCommunicationService()
+        .subscribe(
+            topic,
+            msg -> {
+              handler.accept((String) msg);
+              return CompletableFuture.completedFuture(null);
+            })
+        .join();
   }
 
   private void doAndLogException(final Runnable r) {

@@ -27,8 +27,10 @@ import io.zeebe.util.sched.future.CompletableActorFuture;
 import java.nio.ByteOrder;
 import java.time.Duration;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import org.agrona.DirectBuffer;
 import org.agrona.collections.Int2IntHashMap;
@@ -56,6 +58,7 @@ public final class DeploymentDistributorImpl implements DeploymentDistributor {
   private final IntArrayList partitionsToDistributeTo;
   private final Atomix atomix;
   private final Map<String, IntArrayList> deploymentResponses = new HashMap<>();
+  private final Set<String> deploymentSubscriptions = new HashSet<>();
 
   public DeploymentDistributorImpl(
       final ClusterCfg clusterCfg,
@@ -206,7 +209,7 @@ public final class DeploymentDistributorImpl implements DeploymentDistributor {
                             errorResponse.getErrorData().getInt(0, ByteOrder.LITTLE_ENDIAN);
                         LOG.debug(
                             "Received partition leader mismatch error from partition {} for deployment {}. Retrying.",
-                            partition,
+                            responsePartition,
                             pushRequest.deploymentKey());
 
                       } else {
@@ -226,24 +229,26 @@ public final class DeploymentDistributorImpl implements DeploymentDistributor {
       final long deploymentKey, final PushDeploymentRequest pushRequest) {
     final String topic = getDeploymentResponseTopic(pushRequest.deploymentKey());
 
-    if (atomix.getEventService().getSubscriptions(topic).isEmpty()) {
+    if (!deploymentSubscriptions.contains(topic)) {
       LOG.trace("Setting up deployment subscription for topic {}", topic);
       atomix
-          .getEventService()
+          .getCommunicationService()
           .subscribe(
               topic,
               (byte[] response) -> {
-                final CompletableFuture future = new CompletableFuture();
+                final var future = new CompletableFuture<Void>();
                 actor.call(
                     () -> {
                       LOG.trace("Receiving deployment response on topic {}", topic);
-
+                      atomix.getCommunicationService().unsubscribe(topic);
+                      deploymentSubscriptions.remove(topic);
                       handleResponse(response, deploymentKey, topic);
                       future.complete(null);
                       return future;
                     });
                 return future;
               });
+      deploymentSubscriptions.add(topic);
     }
   }
 

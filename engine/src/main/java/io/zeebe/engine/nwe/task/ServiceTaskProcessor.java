@@ -1,34 +1,37 @@
-package io.zeebe.engine.nwe;
+package io.zeebe.engine.nwe.task;
 
+import io.zeebe.engine.nwe.BpmnElementProcessor;
 import io.zeebe.engine.processor.workflow.deployment.model.element.ExecutableServiceTask;
 
 public final class ServiceTaskProcessor implements BpmnElementProcessor<ExecutableServiceTask> {
 
   @Override
   public void onActivating() {
+    // for all activities:
     // input mappings
-    // subscript to events
-
+    // subscribe to events
   }
 
   @Override
   public void onActivated() {
-    // --> may be better done on activating
-
+    // only for service task:
     // evaluate job type expression
     // evaluate job retries expression
-
     // create job
+
+    // --> may be better done on activating
   }
 
   @Override
   public void onCompleting() {
+    // for all activities:
     // output mappings
     // unsubscribe from events
   }
 
   @Override
   public void onCompleted() {
+    // for all activities:
     // take outgoing sequence flows
     // complete scope if last active token
     // consume token
@@ -38,16 +41,18 @@ public final class ServiceTaskProcessor implements BpmnElementProcessor<Executab
 
   @Override
   public void onTerminating() {
+    // only for service task:
     // cancel job
-
     // resolve job incident
+
+    // for all activities:
     // unsubscribe from events
   }
 
   @Override
   public void onTerminated() {
+    // for all activities:
     // publish deferred events (i.e. an occurred boundary event)
-
     // resolve incidents
     // terminate scope if scope is terminated and last active token
     // publish deferred event if an interrupting event sub-process was triggered
@@ -56,7 +61,8 @@ public final class ServiceTaskProcessor implements BpmnElementProcessor<Executab
 
   @Override
   public void onEventOccurred() {
-    // when boundary event is triggered
+    // for all activities:
+    // (when boundary event is triggered)
     // if interrupting then terminate element and defer occurred event
     // if non-interrupting then activate boundary event, remove event trigger from state, spawn
     // token

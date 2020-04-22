@@ -3,6 +3,7 @@ package io.zeebe.engine.nwe.behavior;
 import io.zeebe.engine.processor.TypedCommandWriter;
 import io.zeebe.engine.processor.TypedStreamWriter;
 import io.zeebe.engine.processor.workflow.CatchEventBehavior;
+import io.zeebe.engine.processor.workflow.EventOutput;
 import io.zeebe.engine.processor.workflow.ExpressionProcessor;
 import io.zeebe.engine.processor.workflow.handlers.IOMappingHelper;
 
@@ -58,5 +59,10 @@ public final class BpmnBehaviorsImpl implements BpmnBehaviors {
   @Override
   public TypedCommandWriter commandWriter() {
     return streamWriter;
+  }
+
+  @Override
+  public EventOutput eventWriter() {
+    return null;
   }
 }

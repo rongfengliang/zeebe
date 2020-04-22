@@ -1,5 +1,6 @@
 package io.zeebe.engine.nwe;
 
+import io.zeebe.engine.nwe.gateway.ExclusiveGatewayProcessor;
 import io.zeebe.engine.nwe.task.ServiceTaskProcessor;
 import io.zeebe.engine.processor.SideEffectProducer;
 import io.zeebe.engine.processor.TypedRecord;
@@ -47,7 +48,9 @@ public final class BpmnStreamProcessor implements TypedRecordProcessor<WorkflowI
     // TODO (saig0): init behavior
     final BpmnBehaviors bpmnBehaviors = null;
 
-    processors = Map.of(BpmnElementType.SERVICE_TASK, new ServiceTaskProcessor(bpmnBehaviors));
+    processors = Map.of(
+        BpmnElementType.SERVICE_TASK, new ServiceTaskProcessor(bpmnBehaviors),
+        BpmnElementType.EXCLUSIVE_GATEWAY, new ExclusiveGatewayProcessor(bpmnBehaviors));
   }
 
   private <T extends ExecutableFlowElement> BpmnElementProcessor<T> getProcessor(

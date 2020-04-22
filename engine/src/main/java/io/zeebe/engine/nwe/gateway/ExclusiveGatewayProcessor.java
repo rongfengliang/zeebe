@@ -47,12 +47,11 @@ public class ExclusiveGatewayProcessor implements BpmnElementProcessor<Executabl
         .ifPresent(
             sequenceFlow -> {
               // defer sequence flow taken, since sequence is taken when the gateway is completed
-              // record.wrap(context.getValue()); todo: find a way to get the record we're currently
-              // processing
+              record.wrap(context.getRecordValue());
               record.setElementId(sequenceFlow.getId());
               record.setBpmnElementType(BpmnElementType.SEQUENCE_FLOW);
               eventWriter.deferRecord(
-                  context.getWorkflowInstanceKey() /*todo check if this is the correct key*/,
+                  context.getElementInstanceKey(),
                   record,
                   WorkflowInstanceIntent.SEQUENCE_FLOW_TAKEN);
             });

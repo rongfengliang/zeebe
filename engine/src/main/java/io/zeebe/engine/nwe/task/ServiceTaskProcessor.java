@@ -1,17 +1,17 @@
 package io.zeebe.engine.nwe.task;
 
 import io.zeebe.engine.Loggers;
-import io.zeebe.engine.nwe.BpmnBehaviors;
 import io.zeebe.engine.nwe.BpmnElementContext;
 import io.zeebe.engine.nwe.BpmnElementProcessor;
-import io.zeebe.engine.nwe.BpmnIncidentBehavior;
+import io.zeebe.engine.nwe.behavior.BpmnBehaviors;
+import io.zeebe.engine.nwe.behavior.BpmnIncidentBehavior;
+import io.zeebe.engine.nwe.behavior.BpmnStateBehavior;
 import io.zeebe.engine.processor.Failure;
 import io.zeebe.engine.processor.TypedCommandWriter;
 import io.zeebe.engine.processor.workflow.CatchEventBehavior;
 import io.zeebe.engine.processor.workflow.ExpressionProcessor;
 import io.zeebe.engine.processor.workflow.deployment.model.element.ExecutableServiceTask;
 import io.zeebe.engine.processor.workflow.handlers.IOMappingHelper;
-import io.zeebe.engine.state.ZeebeState;
 import io.zeebe.engine.state.instance.JobState.State;
 import io.zeebe.msgpack.value.DocumentValue;
 import io.zeebe.protocol.impl.record.value.job.JobRecord;
@@ -27,8 +27,7 @@ public final class ServiceTaskProcessor implements BpmnElementProcessor<Executab
   private final ExpressionProcessor expressionBehavior;
   private final TypedCommandWriter commandWriter;
   private final BpmnIncidentBehavior incidentBehavior;
-
-  private final ZeebeState zeebeState;
+  private final BpmnStateBehavior stateBehavior;
 
   public ServiceTaskProcessor(final BpmnBehaviors behaviors) {
     variableMappingBehavior = behaviors.variableMappingBehavior();
@@ -36,6 +35,7 @@ public final class ServiceTaskProcessor implements BpmnElementProcessor<Executab
     expressionBehavior = behaviors.expressionBehavior();
     commandWriter = behaviors.commandWriter();
     incidentBehavior = behaviors.incidentBehavior();
+    stateBehavior = behaviors.stateBehavior();
   }
 
   @Override
@@ -105,16 +105,10 @@ public final class ServiceTaskProcessor implements BpmnElementProcessor<Executab
     // for all activities:
     // unsubscribe from events
 
-    final var elementInstance =
-        zeebeState
-            .getWorkflowState()
-            .getElementInstanceState()
-            .getInstance(context.getElementInstanceKey());
-
+    final var elementInstance = stateBehavior.getElementInstance(context);
     final long jobKey = elementInstance.getJobKey();
     if (jobKey > 0) {
       cancelJob(jobKey);
-
       incidentBehavior.resolveJobIncident(jobKey);
     }
 
@@ -163,14 +157,14 @@ public final class ServiceTaskProcessor implements BpmnElementProcessor<Executab
   }
 
   private void cancelJob(final long jobKey) {
-    final State state = zeebeState.getJobState().getState(jobKey);
+    final State state = stateBehavior.getJobState().getState(jobKey);
 
     if (state == State.NOT_FOUND) {
       Loggers.WORKFLOW_PROCESSOR_LOGGER.warn(
           "Expected to find job with key {}, but no job found", jobKey);
 
     } else if (state == State.ACTIVATABLE || state == State.ACTIVATED || state == State.FAILED) {
-      final JobRecord job = zeebeState.getJobState().getJob(jobKey);
+      final JobRecord job = stateBehavior.getJobState().getJob(jobKey);
       commandWriter.appendFollowUpCommand(jobKey, JobIntent.CANCEL, job);
     }
   }

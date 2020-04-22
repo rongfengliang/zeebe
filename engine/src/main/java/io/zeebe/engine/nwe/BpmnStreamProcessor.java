@@ -1,6 +1,11 @@
 package io.zeebe.engine.nwe;
 
 import io.zeebe.engine.nwe.gateway.ExclusiveGatewayProcessor;
+import io.zeebe.engine.nwe.behavior.BpmnBehaviors;
+import io.zeebe.engine.nwe.behavior.BpmnBehaviorsImpl;
+import io.zeebe.engine.nwe.behavior.BpmnIncidentBehavior;
+import io.zeebe.engine.nwe.behavior.BpmnStateBehavior;
+import io.zeebe.engine.nwe.behavior.TypesStreamWriterProxy;
 import io.zeebe.engine.nwe.task.ServiceTaskProcessor;
 import io.zeebe.engine.processor.SideEffectProducer;
 import io.zeebe.engine.processor.TypedRecord;
@@ -38,15 +43,21 @@ public final class BpmnStreamProcessor implements TypedRecordProcessor<WorkflowI
       final IOMappingHelper ioMappingHelper,
       final CatchEventBehavior catchEventBehavior,
       final ZeebeState zeebeState) {
+
     this.expressionProcessor = expressionProcessor;
     this.ioMappingHelper = ioMappingHelper;
     this.catchEventBehavior = catchEventBehavior;
+
     workflowState = zeebeState.getWorkflowState();
 
-    new BpmnIncidentBehavior(zeebeState, streamWriterProxy);
-
-    // TODO (saig0): init behavior
-    final BpmnBehaviors bpmnBehaviors = null;
+    final BpmnBehaviors bpmnBehaviors =
+        new BpmnBehaviorsImpl(
+            expressionProcessor,
+            ioMappingHelper,
+            catchEventBehavior,
+            new BpmnIncidentBehavior(zeebeState, streamWriterProxy),
+            new BpmnStateBehavior(zeebeState),
+            streamWriterProxy);
 
     processors = Map.of(
         BpmnElementType.SERVICE_TASK, new ServiceTaskProcessor(bpmnBehaviors),

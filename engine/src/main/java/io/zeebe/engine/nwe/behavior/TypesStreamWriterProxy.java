@@ -1,4 +1,4 @@
-package io.zeebe.engine.nwe;
+package io.zeebe.engine.nwe.behavior;
 
 import io.zeebe.engine.processor.TypedRecord;
 import io.zeebe.engine.processor.TypedStreamWriter;

@@ -1,4 +1,4 @@
-package io.zeebe.engine.nwe;
+package io.zeebe.engine.nwe.behavior;
 
 import io.zeebe.engine.processor.TypedCommandWriter;
 import io.zeebe.engine.processor.workflow.CatchEventBehavior;
@@ -15,6 +15,8 @@ public interface BpmnBehaviors {
   CatchEventBehavior eventSubscriptionBehavior();
 
   BpmnIncidentBehavior incidentBehavior();
+
+  BpmnStateBehavior stateBehavior();
 
   TypedCommandWriter commandWriter();
 

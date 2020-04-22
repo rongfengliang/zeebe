@@ -13,5 +13,7 @@ public interface BpmnBehaviors {
 
   CatchEventBehavior eventSubscriptionBehavior();
 
+  BpmnIncidentBehavior incidentBehavior();
+
   TypedCommandWriter commandWriter();
 }

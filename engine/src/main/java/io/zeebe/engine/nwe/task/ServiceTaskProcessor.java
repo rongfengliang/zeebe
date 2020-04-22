@@ -1,19 +1,22 @@
 package io.zeebe.engine.nwe.task;
 
+import io.zeebe.engine.Loggers;
 import io.zeebe.engine.nwe.BpmnBehaviors;
 import io.zeebe.engine.nwe.BpmnElementContext;
 import io.zeebe.engine.nwe.BpmnElementProcessor;
+import io.zeebe.engine.nwe.BpmnIncidentBehavior;
 import io.zeebe.engine.processor.Failure;
 import io.zeebe.engine.processor.TypedCommandWriter;
 import io.zeebe.engine.processor.workflow.CatchEventBehavior;
 import io.zeebe.engine.processor.workflow.ExpressionProcessor;
 import io.zeebe.engine.processor.workflow.deployment.model.element.ExecutableServiceTask;
 import io.zeebe.engine.processor.workflow.handlers.IOMappingHelper;
+import io.zeebe.engine.state.ZeebeState;
+import io.zeebe.engine.state.instance.JobState.State;
 import io.zeebe.msgpack.value.DocumentValue;
 import io.zeebe.protocol.impl.record.value.job.JobRecord;
 import io.zeebe.protocol.record.intent.JobIntent;
 import io.zeebe.util.Either;
-import java.util.Optional;
 
 public final class ServiceTaskProcessor implements BpmnElementProcessor<ExecutableServiceTask> {
 
@@ -23,14 +26,16 @@ public final class ServiceTaskProcessor implements BpmnElementProcessor<Executab
   private final CatchEventBehavior eventSubscriptionBehavior;
   private final ExpressionProcessor expressionBehavior;
   private final TypedCommandWriter commandWriter;
+  private final BpmnIncidentBehavior incidentBehavior;
+
+  private final ZeebeState zeebeState;
 
   public ServiceTaskProcessor(final BpmnBehaviors behaviors) {
-    this.behaviors = behaviors;
-
     variableMappingBehavior = behaviors.variableMappingBehavior();
     eventSubscriptionBehavior = behaviors.eventSubscriptionBehavior();
     expressionBehavior = behaviors.expressionBehavior();
     commandWriter = behaviors.commandWriter();
+    incidentBehavior = behaviors.incidentBehavior();
   }
 
   @Override
@@ -61,13 +66,12 @@ public final class ServiceTaskProcessor implements BpmnElementProcessor<Executab
         expressionBehavior.evaluateStringExpression(
             element.getType(), context.getElementInstanceKey());
 
-    final Optional<Long> optRetries =
-        expressionBehavior.evaluateLongExpression(element.getRetries(), context.toStepContext());
+    final Either<Failure, Long> optRetries =
+        expressionBehavior.evaluateLongExpression(
+            element.getRetries(), context.getElementInstanceKey());
 
-    if (optJobType.isRight() && optRetries.isPresent()) {
-      final var jobCommand =
-          createJobCommand(context, element, optJobType.get(), optRetries.get().intValue());
-      commandWriter.appendNewCommand(JobIntent.CREATE, jobCommand);
+    if (optJobType.isRight() && optRetries.isRight()) {
+      createNewJob(context, element, optJobType.get(), optRetries.get().intValue());
     }
   }
 
@@ -76,6 +80,10 @@ public final class ServiceTaskProcessor implements BpmnElementProcessor<Executab
     // for all activities:
     // output mappings
     // unsubscribe from events
+
+    variableMappingBehavior.applyOutputMappings(context.toStepContext());
+    eventSubscriptionBehavior.unsubscribeFromEvents(
+        context.getElementInstanceKey(), context.toStepContext());
   }
 
   @Override
@@ -96,6 +104,22 @@ public final class ServiceTaskProcessor implements BpmnElementProcessor<Executab
 
     // for all activities:
     // unsubscribe from events
+
+    final var elementInstance =
+        zeebeState
+            .getWorkflowState()
+            .getElementInstanceState()
+            .getInstance(context.getElementInstanceKey());
+
+    final long jobKey = elementInstance.getJobKey();
+    if (jobKey > 0) {
+      cancelJob(jobKey);
+
+      incidentBehavior.resolveJobIncident(jobKey);
+    }
+
+    eventSubscriptionBehavior.unsubscribeFromEvents(
+        context.getElementInstanceKey(), context.toStepContext());
   }
 
   @Override
@@ -118,13 +142,13 @@ public final class ServiceTaskProcessor implements BpmnElementProcessor<Executab
     // token
   }
 
-  private JobRecord createJobCommand(
+  private void createNewJob(
       final BpmnElementContext context,
       final ExecutableServiceTask serviceTask,
       final String jobType,
       final int retries) {
 
-    return jobCommand
+    jobCommand
         .setType(jobType)
         .setRetries(retries)
         .setCustomHeaders(serviceTask.getEncodedHeaders())
@@ -134,5 +158,20 @@ public final class ServiceTaskProcessor implements BpmnElementProcessor<Executab
         .setWorkflowInstanceKey(context.getWorkflowInstanceKey())
         .setElementId(serviceTask.getId())
         .setElementInstanceKey(context.getElementInstanceKey());
+
+    commandWriter.appendNewCommand(JobIntent.CREATE, jobCommand);
+  }
+
+  private void cancelJob(final long jobKey) {
+    final State state = zeebeState.getJobState().getState(jobKey);
+
+    if (state == State.NOT_FOUND) {
+      Loggers.WORKFLOW_PROCESSOR_LOGGER.warn(
+          "Expected to find job with key {}, but no job found", jobKey);
+
+    } else if (state == State.ACTIVATABLE || state == State.ACTIVATED || state == State.FAILED) {
+      final JobRecord job = zeebeState.getJobState().getJob(jobKey);
+      commandWriter.appendFollowUpCommand(jobKey, JobIntent.CANCEL, job);
+    }
   }
 }

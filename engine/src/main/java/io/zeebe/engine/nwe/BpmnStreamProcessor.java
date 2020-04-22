@@ -1,5 +1,6 @@
 package io.zeebe.engine.nwe;
 
+import io.zeebe.engine.Loggers;
 import io.zeebe.engine.nwe.gateway.ExclusiveGatewayProcessor;
 import io.zeebe.engine.nwe.behavior.BpmnBehaviors;
 import io.zeebe.engine.nwe.behavior.BpmnBehaviorsImpl;
@@ -23,18 +24,16 @@ import io.zeebe.protocol.record.intent.WorkflowInstanceIntent;
 import io.zeebe.protocol.record.value.BpmnElementType;
 import java.util.Map;
 import java.util.function.Consumer;
+import org.slf4j.Logger;
 
 public final class BpmnStreamProcessor implements TypedRecordProcessor<WorkflowInstanceRecord> {
 
-  private final BpmnElementContextImpl context = new BpmnElementContextImpl();
-
-  private final ExpressionProcessor expressionProcessor;
-  private final IOMappingHelper ioMappingHelper;
-  private final CatchEventBehavior catchEventBehavior;
-
-  private final WorkflowState workflowState;
+  private static final Logger LOGGER = Loggers.WORKFLOW_PROCESSOR_LOGGER;
 
   private final TypesStreamWriterProxy streamWriterProxy = new TypesStreamWriterProxy();
+
+  private final BpmnElementContextImpl context;
+  private final WorkflowState workflowState;
 
   private final Map<BpmnElementType, BpmnElementProcessor<?>> processors;
 
@@ -43,10 +42,6 @@ public final class BpmnStreamProcessor implements TypedRecordProcessor<WorkflowI
       final IOMappingHelper ioMappingHelper,
       final CatchEventBehavior catchEventBehavior,
       final ZeebeState zeebeState) {
-
-    this.expressionProcessor = expressionProcessor;
-    this.ioMappingHelper = ioMappingHelper;
-    this.catchEventBehavior = catchEventBehavior;
 
     workflowState = zeebeState.getWorkflowState();
 
@@ -62,11 +57,18 @@ public final class BpmnStreamProcessor implements TypedRecordProcessor<WorkflowI
     processors = Map.of(
         BpmnElementType.SERVICE_TASK, new ServiceTaskProcessor(bpmnBehaviors),
         BpmnElementType.EXCLUSIVE_GATEWAY, new ExclusiveGatewayProcessor(bpmnBehaviors));
+
+    context = new BpmnElementContextImpl(zeebeState);
   }
 
   private <T extends ExecutableFlowElement> BpmnElementProcessor<T> getProcessor(
       final BpmnElementType bpmnElementType) {
-    return (BpmnElementProcessor<T>) processors.get(bpmnElementType);
+    final var processor = (BpmnElementProcessor<T>) processors.get(bpmnElementType);
+    if (processor == null) {
+      throw new UnsupportedOperationException(
+          String.format("no processor found for BPMN element type '%s'", bpmnElementType));
+    }
+    return processor;
   }
 
   @Override
@@ -76,11 +78,7 @@ public final class BpmnStreamProcessor implements TypedRecordProcessor<WorkflowI
       final TypedStreamWriter streamWriter,
       final Consumer<SideEffectProducer> sideEffect) {
 
-    // initialize the stuff
-    context.init(record);
-    streamWriterProxy.wrap(streamWriter);
-
-    // process the record
+    final var intent = (WorkflowInstanceIntent) record.getIntent();
     final var recordValue = record.getValue();
     final var bpmnElementType = recordValue.getBpmnElementType();
     final var processor = getProcessor(bpmnElementType);
@@ -89,11 +87,28 @@ public final class BpmnStreamProcessor implements TypedRecordProcessor<WorkflowI
         workflowState.getFlowElement(
             recordValue.getWorkflowKey(), recordValue.getElementIdBuffer(), processor.getType());
 
-    final WorkflowInstanceIntent intent = (WorkflowInstanceIntent) record.getIntent();
+    LOGGER.info(
+        "[NEW] process workflow instance event [BPMN element type: {}, intent: {}]",
+        bpmnElementType,
+        intent);
+
+    // initialize the stuff
+    context.init(record, intent, element);
+    streamWriterProxy.wrap(streamWriter);
+
+    // process the event
+    processEvent(intent, processor, element);
+  }
+
+  private void processEvent(
+      final WorkflowInstanceIntent intent,
+      final BpmnElementProcessor<ExecutableFlowElement> processor,
+      final ExecutableFlowElement element) {
+
     switch (intent) {
       case ELEMENT_ACTIVATING:
         processor.onActivating(element, context);
-        // transition to ELEMENT_ACTIVATED
+        transitionTo(WorkflowInstanceIntent.ELEMENT_ACTIVATED);
         break;
       case ELEMENT_ACTIVATED:
         processor.onActivated(element, context);
@@ -103,7 +118,7 @@ public final class BpmnStreamProcessor implements TypedRecordProcessor<WorkflowI
         break;
       case ELEMENT_COMPLETING:
         processor.onCompleting(element, context);
-        // transition to ELEMENT_COMPLETED
+        transitionTo(WorkflowInstanceIntent.ELEMENT_COMPLETED);
         break;
       case ELEMENT_COMPLETED:
         processor.onCompleted(element, context);
@@ -114,6 +129,15 @@ public final class BpmnStreamProcessor implements TypedRecordProcessor<WorkflowI
       case ELEMENT_TERMINATED:
         processor.onTerminated(element, context);
         break;
+      default:
+        throw new UnsupportedOperationException(
+            String.format(
+                "processor '%s' can not handle intent '%s'", processor.getClass(), intent));
     }
+  }
+
+  private void transitionTo(final WorkflowInstanceIntent intent) {
+    streamWriterProxy.appendFollowUpEvent(
+        context.getElementInstanceKey(), intent, context.getRecordValue());
   }
 }

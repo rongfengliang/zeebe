@@ -112,6 +112,7 @@ public final class ResolveIncidentProcessor implements TypedRecordProcessor<Inci
       queue.clear();
       queue.add(responseWriter::flush);
       stepProcessor.processRecordValue(
+          null,
           failedRecord.getKey(),
           failedRecord.getValue(),
           failedRecord.getState(),

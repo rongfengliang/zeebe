@@ -110,12 +110,6 @@ public final class ExpressionProcessor {
         .map(Number::longValue);
   }
 
-  public Either<Failure, Long> evaluateLongExpression(
-      final Expression expression, final long scopeKey) {
-    // TODO (saig0): implement me
-    return Either.right(1L);
-  }
-
   /**
    * Evaluates the given expression and returns the result as boolean. If the evaluation fails or
    * the result is not a boolean then an incident is raised.

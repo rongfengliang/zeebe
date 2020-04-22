@@ -17,6 +17,7 @@ import io.zeebe.msgpack.value.DocumentValue;
 import io.zeebe.protocol.impl.record.value.job.JobRecord;
 import io.zeebe.protocol.record.intent.JobIntent;
 import io.zeebe.util.Either;
+import java.util.Optional;
 
 public final class ServiceTaskProcessor implements BpmnElementProcessor<ExecutableServiceTask> {
 
@@ -66,11 +67,10 @@ public final class ServiceTaskProcessor implements BpmnElementProcessor<Executab
         expressionBehavior.evaluateStringExpression(
             element.getType(), context.getElementInstanceKey());
 
-    final Either<Failure, Long> optRetries =
-        expressionBehavior.evaluateLongExpression(
-            element.getRetries(), context.getElementInstanceKey());
+    final Optional<Long> optRetries =
+        expressionBehavior.evaluateLongExpression(element.getRetries(), context.toStepContext());
 
-    if (optJobType.isRight() && optRetries.isRight()) {
+    if (optJobType.isRight() && optRetries.isPresent()) {
       createNewJob(context, element, optJobType.get(), optRetries.get().intValue());
     }
   }

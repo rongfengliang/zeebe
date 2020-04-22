@@ -7,9 +7,11 @@
  */
 package io.zeebe.engine.processor.workflow;
 
+import io.zeebe.engine.nwe.BpmnStreamProcessor;
 import io.zeebe.engine.processor.workflow.deployment.model.BpmnStep;
 import io.zeebe.engine.processor.workflow.deployment.model.element.ExecutableFlowElement;
 import io.zeebe.engine.processor.workflow.handlers.CatchEventSubscriber;
+import io.zeebe.engine.processor.workflow.handlers.IOMappingHelper;
 import io.zeebe.engine.processor.workflow.handlers.IncidentResolver;
 import io.zeebe.engine.processor.workflow.handlers.activity.ActivityElementActivatingHandler;
 import io.zeebe.engine.processor.workflow.handlers.activity.ActivityElementCompletingHandler;
@@ -66,6 +68,7 @@ import java.util.Map;
 
 public final class BpmnStepHandlers {
   private final Map<BpmnStep, BpmnStepHandler<?>> stepHandlers = new EnumMap<>(BpmnStep.class);
+  private final BpmnStreamProcessor bpmnStreamProcessor;
 
   BpmnStepHandlers(
       final ZeebeState state,
@@ -215,12 +218,30 @@ public final class BpmnStepHandlers {
         new CallActivityTerminatingHandler(catchEventSubscriber));
 
     stepHandlers.put(BpmnStep.THROW_ERROR, new ThrowErrorHandler(errorEventHandler));
+
+    // ---------- new -----------------
+    bpmnStreamProcessor =
+        new BpmnStreamProcessor(
+            expressionProcessor,
+            new IOMappingHelper(expressionProcessor),
+            catchEventBehavior,
+            state);
   }
 
   public void handle(final BpmnStepContext context) {
     final ExecutableFlowElement flowElement = context.getElement();
     final WorkflowInstanceIntent state = context.getState();
     final BpmnStep step = flowElement.getStep(state);
+
+    if (step == BpmnStep.BPMN_ELEMENT_PROCESSOR) {
+      // TODO (saig0): hack the new BPMN element processor in
+      bpmnStreamProcessor.processRecord(
+          context.getRecord_(),
+          context.getOutput().getResponseWriter(),
+          context.getOutput().getStreamWriter(),
+          context.getSideEffect_());
+      return;
+    }
 
     if (step != null) {
       final BpmnStepHandler stepHandler = stepHandlers.get(step);

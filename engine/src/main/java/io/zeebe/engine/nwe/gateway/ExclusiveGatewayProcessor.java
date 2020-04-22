@@ -4,6 +4,7 @@ import io.zeebe.el.Expression;
 import io.zeebe.engine.nwe.BpmnBehaviors;
 import io.zeebe.engine.nwe.BpmnElementContext;
 import io.zeebe.engine.nwe.BpmnElementProcessor;
+import io.zeebe.engine.nwe.BpmnIncidentBehavior;
 import io.zeebe.engine.processor.workflow.EventOutput;
 import io.zeebe.engine.processor.workflow.ExpressionProcessor;
 import io.zeebe.engine.processor.workflow.deployment.model.element.ExecutableExclusiveGateway;
@@ -22,9 +23,11 @@ public class ExclusiveGatewayProcessor implements BpmnElementProcessor<Executabl
   private final ExpressionProcessor expressionBehavior;
   private final EventOutput eventWriter;
   private final WorkflowInstanceRecord record = new WorkflowInstanceRecord();
+  private final BpmnIncidentBehavior incidentBehavior;
 
   public ExclusiveGatewayProcessor(final BpmnBehaviors bpmnBehaviors) {
     this.expressionBehavior = bpmnBehaviors.expressionBehavior();
+    this.incidentBehavior = bpmnBehaviors.incidentBehavior();
 
     // probably this is not bpmn behavior, but like command writer more IO related
     // todo: discuss whether this should be part of bpmnbehavior
@@ -123,7 +126,8 @@ public class ExclusiveGatewayProcessor implements BpmnElementProcessor<Executabl
 
     } else {
       // todo: raise incident NO_OUTGOING_FLOW_CHOSEN_ERROR if unable to find any
-      context.toStepContext().raiseIncident(ErrorType.CONDITION_ERROR, NO_OUTGOING_FLOW_CHOSEN_ERROR);
+      incidentBehavior
+          .createIncident(ErrorType.CONDITION_ERROR, NO_OUTGOING_FLOW_CHOSEN_ERROR, context);
       return Optional.empty();
     }
   }

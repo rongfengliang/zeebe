@@ -4,7 +4,11 @@ import io.zeebe.engine.nwe.BpmnBehaviors;
 import io.zeebe.engine.nwe.BpmnElementContext;
 import io.zeebe.engine.nwe.BpmnElementProcessor;
 import io.zeebe.engine.processor.Failure;
+import io.zeebe.engine.processor.TypedCommandWriter;
+import io.zeebe.engine.processor.workflow.CatchEventBehavior;
+import io.zeebe.engine.processor.workflow.ExpressionProcessor;
 import io.zeebe.engine.processor.workflow.deployment.model.element.ExecutableServiceTask;
+import io.zeebe.engine.processor.workflow.handlers.IOMappingHelper;
 import io.zeebe.msgpack.value.DocumentValue;
 import io.zeebe.protocol.impl.record.value.job.JobRecord;
 import io.zeebe.protocol.record.intent.JobIntent;
@@ -15,10 +19,18 @@ public final class ServiceTaskProcessor implements BpmnElementProcessor<Executab
 
   private final JobRecord jobCommand = new JobRecord().setVariables(DocumentValue.EMPTY_DOCUMENT);
 
-  private final BpmnBehaviors behaviors;
+  private final IOMappingHelper variableMappingBehavior;
+  private final CatchEventBehavior eventSubscriptionBehavior;
+  private final ExpressionProcessor expressionBehavior;
+  private final TypedCommandWriter commandWriter;
 
   public ServiceTaskProcessor(final BpmnBehaviors behaviors) {
     this.behaviors = behaviors;
+
+    variableMappingBehavior = behaviors.variableMappingBehavior();
+    eventSubscriptionBehavior = behaviors.eventSubscriptionBehavior();
+    expressionBehavior = behaviors.expressionBehavior();
+    commandWriter = behaviors.commandWriter();
   }
 
   @Override
@@ -32,8 +44,8 @@ public final class ServiceTaskProcessor implements BpmnElementProcessor<Executab
     // input mappings
     // subscribe to events
 
-    behaviors.variableMappingBehavior().applyInputMappings(context.toStepContext());
-    behaviors.eventSubscriptionBehavior().subscribeToEvents(context.toStepContext(), element);
+    variableMappingBehavior.applyInputMappings(context.toStepContext());
+    eventSubscriptionBehavior.subscribeToEvents(context.toStepContext(), element);
   }
 
   @Override
@@ -46,19 +58,16 @@ public final class ServiceTaskProcessor implements BpmnElementProcessor<Executab
     // --> may be better done on activating
 
     final Either<Failure, String> optJobType =
-        behaviors
-            .expressionBehavior()
-            .evaluateStringExpression(element.getType(), context.getElementInstanceKey());
+        expressionBehavior.evaluateStringExpression(
+            element.getType(), context.getElementInstanceKey());
 
     final Optional<Long> optRetries =
-        behaviors
-            .expressionBehavior()
-            .evaluateLongExpression(element.getRetries(), context.toStepContext());
+        expressionBehavior.evaluateLongExpression(element.getRetries(), context.toStepContext());
 
     if (optJobType.isRight() && optRetries.isPresent()) {
       final var jobCommand =
           createJobCommand(context, element, optJobType.get(), optRetries.get().intValue());
-      behaviors.commandWriter().appendNewCommand(JobIntent.CREATE, jobCommand);
+      commandWriter.appendNewCommand(JobIntent.CREATE, jobCommand);
     }
   }
 

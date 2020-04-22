@@ -1,36 +1,76 @@
 package io.zeebe.engine.nwe.task;
 
+import io.zeebe.engine.nwe.BpmnBehaviors;
+import io.zeebe.engine.nwe.BpmnElementContext;
 import io.zeebe.engine.nwe.BpmnElementProcessor;
+import io.zeebe.engine.processor.Failure;
 import io.zeebe.engine.processor.workflow.deployment.model.element.ExecutableServiceTask;
+import io.zeebe.msgpack.value.DocumentValue;
+import io.zeebe.protocol.impl.record.value.job.JobRecord;
+import io.zeebe.protocol.record.intent.JobIntent;
+import io.zeebe.util.Either;
+import java.util.Optional;
 
 public final class ServiceTaskProcessor implements BpmnElementProcessor<ExecutableServiceTask> {
 
-  @Override
-  public void onActivating() {
-    // for all activities:
-    // input mappings
-    // subscribe to events
+  private final JobRecord jobCommand = new JobRecord().setVariables(DocumentValue.EMPTY_DOCUMENT);
+
+  private final BpmnBehaviors behaviors;
+
+  public ServiceTaskProcessor(final BpmnBehaviors behaviors) {
+    this.behaviors = behaviors;
   }
 
   @Override
-  public void onActivated() {
+  public Class<ExecutableServiceTask> getType() {
+    return ExecutableServiceTask.class;
+  }
+
+  @Override
+  public void onActivating(final ExecutableServiceTask element, final BpmnElementContext context) {
+    // for all activities:
+    // input mappings
+    // subscribe to events
+
+    behaviors.variableMappingBehavior().applyInputMappings(context.toStepContext());
+    behaviors.eventSubscriptionBehavior().subscribeToEvents(context.toStepContext(), element);
+  }
+
+  @Override
+  public void onActivated(final ExecutableServiceTask element, final BpmnElementContext context) {
     // only for service task:
     // evaluate job type expression
     // evaluate job retries expression
     // create job
 
     // --> may be better done on activating
+
+    final Either<Failure, String> optJobType =
+        behaviors
+            .expressionBehavior()
+            .evaluateStringExpression(element.getType(), context.getElementInstanceKey());
+
+    final Optional<Long> optRetries =
+        behaviors
+            .expressionBehavior()
+            .evaluateLongExpression(element.getRetries(), context.toStepContext());
+
+    if (optJobType.isRight() && optRetries.isPresent()) {
+      final var jobCommand =
+          createJobCommand(context, element, optJobType.get(), optRetries.get().intValue());
+      behaviors.commandWriter().appendNewCommand(JobIntent.CREATE, jobCommand);
+    }
   }
 
   @Override
-  public void onCompleting() {
+  public void onCompleting(final ExecutableServiceTask element, final BpmnElementContext context) {
     // for all activities:
     // output mappings
     // unsubscribe from events
   }
 
   @Override
-  public void onCompleted() {
+  public void onCompleted(final ExecutableServiceTask element, final BpmnElementContext context) {
     // for all activities:
     // take outgoing sequence flows
     // complete scope if last active token
@@ -40,7 +80,7 @@ public final class ServiceTaskProcessor implements BpmnElementProcessor<Executab
   }
 
   @Override
-  public void onTerminating() {
+  public void onTerminating(final ExecutableServiceTask element, final BpmnElementContext context) {
     // only for service task:
     // cancel job
     // resolve job incident
@@ -50,7 +90,7 @@ public final class ServiceTaskProcessor implements BpmnElementProcessor<Executab
   }
 
   @Override
-  public void onTerminated() {
+  public void onTerminated(final ExecutableServiceTask element, final BpmnElementContext context) {
     // for all activities:
     // publish deferred events (i.e. an occurred boundary event)
     // resolve incidents
@@ -60,11 +100,30 @@ public final class ServiceTaskProcessor implements BpmnElementProcessor<Executab
   }
 
   @Override
-  public void onEventOccurred() {
+  public void onEventOccurred(
+      final ExecutableServiceTask element, final BpmnElementContext context) {
     // for all activities:
     // (when boundary event is triggered)
     // if interrupting then terminate element and defer occurred event
     // if non-interrupting then activate boundary event, remove event trigger from state, spawn
     // token
+  }
+
+  private JobRecord createJobCommand(
+      final BpmnElementContext context,
+      final ExecutableServiceTask serviceTask,
+      final String jobType,
+      final int retries) {
+
+    return jobCommand
+        .setType(jobType)
+        .setRetries(retries)
+        .setCustomHeaders(serviceTask.getEncodedHeaders())
+        .setBpmnProcessId(context.getBpmnProcessId())
+        .setWorkflowDefinitionVersion(context.getWorkflowVersion())
+        .setWorkflowKey(context.getWorkflowKey())
+        .setWorkflowInstanceKey(context.getWorkflowInstanceKey())
+        .setElementId(serviceTask.getId())
+        .setElementInstanceKey(context.getElementInstanceKey());
   }
 }

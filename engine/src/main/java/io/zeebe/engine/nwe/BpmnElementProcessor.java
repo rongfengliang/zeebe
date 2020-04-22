@@ -4,17 +4,19 @@ import io.zeebe.engine.processor.workflow.deployment.model.element.ExecutableFlo
 
 public interface BpmnElementProcessor<T extends ExecutableFlowElement> {
 
-  void onActivating();
+  Class<T> getType();
 
-  void onActivated();
+  void onActivating(final T element, final BpmnElementContext context);
 
-  void onCompleting();
+  void onActivated(final T element, final BpmnElementContext context);
 
-  void onCompleted();
+  void onCompleting(final T element, final BpmnElementContext context);
 
-  void onTerminating();
+  void onCompleted(final T element, final BpmnElementContext context);
 
-  void onTerminated();
+  void onTerminating(final T element, final BpmnElementContext context);
 
-  void onEventOccurred();
+  void onTerminated(final T element, final BpmnElementContext context);
+
+  void onEventOccurred(final T element, final BpmnElementContext context);
 }

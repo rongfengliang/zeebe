@@ -60,7 +60,13 @@ public final class AtomixSnapshotStorage implements SnapshotStorage, SnapshotLis
   @Override
   public Optional<Snapshot> getPendingSnapshotFor(final long snapshotPosition) {
     final var optionalIndexed = entrySupplier.getIndexedEntry(snapshotPosition);
-    return optionalIndexed.map(this::getSnapshot);
+
+    final Long previousSnapshotIndex =
+        getLatestSnapshot().map(Snapshot::getCompactionBound).orElse(-1L);
+
+    return optionalIndexed
+        .filter(indexed -> indexed.index() != previousSnapshotIndex)
+        .map(this::getSnapshot);
   }
 
   @Override

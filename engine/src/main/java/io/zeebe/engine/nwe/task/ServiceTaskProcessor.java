@@ -11,6 +11,7 @@ import io.zeebe.engine.processor.Failure;
 import io.zeebe.engine.processor.TypedCommandWriter;
 import io.zeebe.engine.processor.workflow.CatchEventBehavior;
 import io.zeebe.engine.processor.workflow.ExpressionProcessor;
+import io.zeebe.engine.processor.workflow.ExpressionProcessor.EvaluationException;
 import io.zeebe.engine.processor.workflow.deployment.model.element.ExecutableServiceTask;
 import io.zeebe.engine.processor.workflow.handlers.IOMappingHelper;
 import io.zeebe.engine.processor.workflow.message.MessageCorrelationKeyException;
@@ -56,11 +57,17 @@ public final class ServiceTaskProcessor implements BpmnElementProcessor<Executab
     // input mappings
     // subscribe to events
 
-    variableMappingBehavior.applyInputMappings(context.toStepContext());
+    // TODO (saig0): migrate to Either types
+    final var success = variableMappingBehavior.applyInputMappings(context.toStepContext());
+    if (!success) {
+      return;
+    }
+
     try {
       eventSubscriptionBehavior.subscribeToEvents(context.toStepContext(), element);
-    } catch (final MessageCorrelationKeyException e) {
+    } catch (final MessageCorrelationKeyException | EvaluationException e) {
       incidentBehavior.createIncident(ErrorType.EXTRACT_VALUE_ERROR, e.getMessage(), context);
+      return;
     }
 
     stateTransitionBehavior.transitionToActivated(context);
@@ -83,6 +90,13 @@ public final class ServiceTaskProcessor implements BpmnElementProcessor<Executab
     final Either<Failure, String> optJobType =
         expressionBehavior.evaluateStringExpression(
             element.getType(), context.getElementInstanceKey());
+
+    // TODO (saig0): I want either.flapMap and consuming methods =)
+    if (optJobType.isLeft()) {
+      final var failure = optJobType.getLeft();
+      incidentBehavior.createIncident(ErrorType.EXTRACT_VALUE_ERROR, failure.getMessage(), context);
+      return;
+    }
 
     final Optional<Long> optRetries =
         expressionBehavior.evaluateLongExpression(element.getRetries(), context.toStepContext());

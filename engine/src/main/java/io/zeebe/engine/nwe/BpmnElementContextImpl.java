@@ -103,6 +103,7 @@ public final class BpmnElementContextImpl implements BpmnElementContext {
 
     stepContext.init(elementInstanceKey, recordValue, intent);
     stepContext.setElement(element);
+    stepContext.setStreamWriter(streamWriter);
     stepContext.getOutput().setStreamWriter(streamWriter);
 
     // TODO (saig0): so message subscriptions are opened via side-effects

@@ -28,6 +28,7 @@ import io.zeebe.broker.exporter.stream.ExporterDirectorContext;
 import io.zeebe.broker.logstreams.AtomixLogCompactor;
 import io.zeebe.broker.logstreams.LogCompactor;
 import io.zeebe.broker.logstreams.LogDeletionService;
+import io.zeebe.broker.logstreams.state.StatePositionSupplier;
 import io.zeebe.broker.system.configuration.BrokerCfg;
 import io.zeebe.broker.system.configuration.DataCfg;
 import io.zeebe.broker.system.monitoring.HealthMetrics;
@@ -424,7 +425,10 @@ public final class ZeebePartition extends Actor
             : new NoneSnapshotReplication();
 
     return new StateSnapshotController(
-        DefaultZeebeDbFactory.DEFAULT_DB_FACTORY, snapshotStorage, stateReplication);
+        DefaultZeebeDbFactory.DEFAULT_DB_FACTORY,
+        snapshotStorage,
+        stateReplication,
+        StatePositionSupplier::getHighestExportedPosition);
   }
 
   // sonar warns that we should use AtomixRecordEntrySupplierImpl in a try-with-resources, which is

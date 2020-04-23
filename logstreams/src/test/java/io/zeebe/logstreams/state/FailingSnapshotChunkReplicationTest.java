@@ -49,10 +49,14 @@ public final class FailingSnapshotChunkReplicationTest {
         new StateSnapshotController(
             ZeebeRocksDbFactory.newFactory(DefaultColumnFamily.class),
             replicatorStorage,
-            replicator);
+            replicator,
+            zeebeDb -> Long.MAX_VALUE);
     receiverSnapshotController =
         new StateSnapshotController(
-            ZeebeRocksDbFactory.newFactory(DefaultColumnFamily.class), receiverStorage, replicator);
+            ZeebeRocksDbFactory.newFactory(DefaultColumnFamily.class),
+            receiverStorage,
+            replicator,
+            zeebeDb -> Long.MAX_VALUE);
 
     autoCloseableRule.manage(replicatorSnapshotController);
     autoCloseableRule.manage(replicatorStorage);
@@ -134,7 +138,7 @@ public final class FailingSnapshotChunkReplicationTest {
         p -> {
           try {
             Files.delete(p);
-          } catch (IOException e) {
+          } catch (final IOException e) {
             e.printStackTrace();
           }
         });

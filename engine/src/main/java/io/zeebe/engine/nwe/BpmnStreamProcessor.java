@@ -53,7 +53,7 @@ public final class BpmnStreamProcessor implements TypedRecordProcessor<WorkflowI
             ioMappingHelper,
             catchEventBehavior,
             new BpmnIncidentBehavior(zeebeState, streamWriterProxy),
-            new BpmnStateBehavior(zeebeState),
+            new BpmnStateBehavior(zeebeState, streamWriterProxy),
             new BpmnStateTransitionBehavior(streamWriterProxy),
             streamWriterProxy,
             new DeferredRecordsBehavior(zeebeState, streamWriterProxy));
@@ -61,7 +61,8 @@ public final class BpmnStreamProcessor implements TypedRecordProcessor<WorkflowI
     processors =
         Map.of(
             BpmnElementType.SERVICE_TASK, new ServiceTaskProcessor(bpmnBehaviors),
-            BpmnElementType.EXCLUSIVE_GATEWAY, new ExclusiveGatewayProcessor(bpmnBehaviors));
+            BpmnElementType.EXCLUSIVE_GATEWAY,
+            new ExclusiveGatewayProcessor(bpmnBehaviors));
 
     context = new BpmnElementContextImpl(zeebeState);
   }

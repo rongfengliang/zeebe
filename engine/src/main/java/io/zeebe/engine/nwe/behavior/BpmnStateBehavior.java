@@ -5,16 +5,21 @@ import io.zeebe.engine.state.ZeebeState;
 import io.zeebe.engine.state.instance.ElementInstance;
 import io.zeebe.engine.state.instance.ElementInstanceState;
 import io.zeebe.engine.state.instance.JobState;
+import io.zeebe.protocol.impl.record.value.workflowinstance.WorkflowInstanceRecord;
+import io.zeebe.protocol.record.intent.WorkflowInstanceIntent;
 import java.util.function.Consumer;
 
 public final class BpmnStateBehavior {
 
   private final ElementInstanceState elementInstanceState;
   private final JobState jobState;
+  private final TypesStreamWriterProxy streamWriter;
 
-  public BpmnStateBehavior(final ZeebeState zeebeState) {
+  public BpmnStateBehavior(final ZeebeState zeebeState,
+      final TypesStreamWriterProxy streamWriterProxy) {
     elementInstanceState = zeebeState.getWorkflowState().getElementInstanceState();
     jobState = zeebeState.getJobState();
+    streamWriter = streamWriterProxy;
   }
 
   public ElementInstance getElementInstance(final BpmnElementContext context) {
@@ -34,5 +39,46 @@ public final class BpmnStateBehavior {
 
   public JobState getJobState() {
     return jobState;
+  }
+
+  public boolean isLastActiveExecutionPathInScope(final BpmnElementContext context) {
+    final ElementInstance flowScopeInstance = getFlowScopeInstance(context);
+
+    if (flowScopeInstance == null) {
+      return false;
+    }
+
+    final int activePaths = flowScopeInstance.getNumberOfActiveTokens();
+    if (activePaths < 0) {
+      throw new IllegalStateException(
+          String.format(
+              "Expected number of active paths to be positive but got %d for instance %s",
+              activePaths, flowScopeInstance));
+    }
+
+    return activePaths == 1;
+  }
+
+  public void completeFlowScope(final BpmnElementContext context) {
+    final ElementInstance flowScopeInstance = getFlowScopeInstance(context);
+    final WorkflowInstanceRecord flowScopeInstanceValue = flowScopeInstance.getValue();
+
+    streamWriter
+        .appendFollowUpEvent(
+            flowScopeInstance.getKey(),
+            WorkflowInstanceIntent.ELEMENT_COMPLETING,
+            flowScopeInstanceValue);
+  }
+
+  public void consumeToken(final BpmnElementContext context) {
+    final ElementInstance flowScopeInstance = getFlowScopeInstance(context);
+    if (flowScopeInstance != null) {
+      elementInstanceState.consumeToken(flowScopeInstance.getKey());
+    }
+  }
+
+  // replaces BpmnStepContext.getFlowScopeInstance()
+  ElementInstance getFlowScopeInstance(final BpmnElementContext context) {
+    return elementInstanceState.getInstance(context.getRecordValue().getFlowScopeKey());
   }
 }

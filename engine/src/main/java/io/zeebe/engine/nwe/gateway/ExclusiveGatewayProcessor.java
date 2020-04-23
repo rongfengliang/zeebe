@@ -84,15 +84,11 @@ public class ExclusiveGatewayProcessor implements BpmnElementProcessor<Executabl
       final ExecutableExclusiveGateway element, final BpmnElementContext context) {
     deferredRecordsBehavior.publishDeferredRecords(context);
 
-    // from ElementCompletedHandler
-//    if (isLastActiveExecutionPathInScope(context)) {
-//      completeFlowScope(context);
-//    }
+    if (stateBehavior.isLastActiveExecutionPathInScope(context)) {
+      stateBehavior.completeFlowScope(context);
+    }
     // from AbstractTerminalStateHandler
-//    final ElementInstance flowScopeInstance = context.getFlowScopeInstance();
-//    if (flowScopeInstance != null) {
-//      context.getStateDb().getElementInstanceState().consumeToken(flowScopeInstance.getKey());
-//    }
+    stateBehavior.consumeToken(context);
   }
 
   @Override

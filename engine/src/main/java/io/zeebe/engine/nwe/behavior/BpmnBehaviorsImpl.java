@@ -3,7 +3,6 @@ package io.zeebe.engine.nwe.behavior;
 import io.zeebe.engine.processor.TypedCommandWriter;
 import io.zeebe.engine.processor.TypedStreamWriter;
 import io.zeebe.engine.processor.workflow.CatchEventBehavior;
-import io.zeebe.engine.processor.workflow.EventOutput;
 import io.zeebe.engine.processor.workflow.ExpressionProcessor;
 import io.zeebe.engine.processor.workflow.handlers.IOMappingHelper;
 
@@ -16,6 +15,7 @@ public final class BpmnBehaviorsImpl implements BpmnBehaviors {
   private final BpmnStateBehavior stateBehavior;
   private final BpmnStateTransitionBehavior stateTransitionBehavior;
   private final TypedStreamWriter streamWriter;
+  private final DeferredRecordsBehavior deferredRecordsBehavior;
 
   public BpmnBehaviorsImpl(
       final ExpressionProcessor expressionBehavior,
@@ -24,7 +24,8 @@ public final class BpmnBehaviorsImpl implements BpmnBehaviors {
       final BpmnIncidentBehavior incidentBehavior,
       final BpmnStateBehavior stateBehavior,
       final BpmnStateTransitionBehavior stateTransitionBehavior,
-      final TypedStreamWriter streamWriter) {
+      final TypedStreamWriter streamWriter,
+      final DeferredRecordsBehavior deferredRecordsBehavior) {
     this.expressionBehavior = expressionBehavior;
     this.variableMappingBehavior = variableMappingBehavior;
     this.eventSubscriptionBehavior = eventSubscriptionBehavior;
@@ -32,6 +33,7 @@ public final class BpmnBehaviorsImpl implements BpmnBehaviors {
     this.stateBehavior = stateBehavior;
     this.stateTransitionBehavior = stateTransitionBehavior;
     this.streamWriter = streamWriter;
+    this.deferredRecordsBehavior = deferredRecordsBehavior;
   }
 
   @Override
@@ -65,12 +67,12 @@ public final class BpmnBehaviorsImpl implements BpmnBehaviors {
   }
 
   @Override
-  public EventOutput eventWriter() {
-    return null;
+  public BpmnStateTransitionBehavior stateTransitionBehavior() {
+    return stateTransitionBehavior;
   }
 
   @Override
-  public BpmnStateTransitionBehavior stateTransitionBehavior() {
-    return stateTransitionBehavior;
+  public DeferredRecordsBehavior deferredRecordsBehavior() {
+    return deferredRecordsBehavior;
   }
 }

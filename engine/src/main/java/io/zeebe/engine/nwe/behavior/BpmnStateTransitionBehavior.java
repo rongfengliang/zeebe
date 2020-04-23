@@ -20,6 +20,10 @@ public final class BpmnStateTransitionBehavior {
     transitionTo(context, WorkflowInstanceIntent.ELEMENT_TERMINATED);
   }
 
+  public void transitionToCompleting(final BpmnElementContext context) {
+    transitionTo(context, WorkflowInstanceIntent.ELEMENT_COMPLETING);
+  }
+
   public void transitionToCompleted(final BpmnElementContext context) {
     transitionTo(context, WorkflowInstanceIntent.ELEMENT_COMPLETED);
   }

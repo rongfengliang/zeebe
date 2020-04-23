@@ -5,7 +5,9 @@ import io.zeebe.engine.nwe.BpmnElementContext;
 import io.zeebe.engine.nwe.BpmnElementProcessor;
 import io.zeebe.engine.nwe.behavior.BpmnBehaviors;
 import io.zeebe.engine.nwe.behavior.BpmnIncidentBehavior;
-import io.zeebe.engine.processor.workflow.EventOutput;
+import io.zeebe.engine.nwe.behavior.BpmnStateBehavior;
+import io.zeebe.engine.nwe.behavior.BpmnStateTransitionBehavior;
+import io.zeebe.engine.nwe.behavior.DeferredRecordsBehavior;
 import io.zeebe.engine.processor.workflow.ExpressionProcessor;
 import io.zeebe.engine.processor.workflow.deployment.model.element.ExecutableExclusiveGateway;
 import io.zeebe.engine.processor.workflow.deployment.model.element.ExecutableSequenceFlow;
@@ -20,18 +22,20 @@ public class ExclusiveGatewayProcessor implements BpmnElementProcessor<Executabl
   private static final String NO_OUTGOING_FLOW_CHOSEN_ERROR =
       "Expected at least one condition to evaluate to true, or to have a default flow";
 
-  private final ExpressionProcessor expressionBehavior;
-  private final EventOutput eventWriter;
   private final WorkflowInstanceRecord record = new WorkflowInstanceRecord();
+
+  private final BpmnStateBehavior stateBehavior;
+  private final BpmnStateTransitionBehavior stateTransitionBehavior;
   private final BpmnIncidentBehavior incidentBehavior;
+  private final DeferredRecordsBehavior deferredRecordsBehavior;
+  private final ExpressionProcessor expressionBehavior;
 
-  public ExclusiveGatewayProcessor(final BpmnBehaviors bpmnBehaviors) {
-    expressionBehavior = bpmnBehaviors.expressionBehavior();
-    incidentBehavior = bpmnBehaviors.incidentBehavior();
-
-    // probably this is not bpmn behavior, but like command writer more IO related
-    // todo: discuss whether this should be part of bpmnbehavior
-    eventWriter = bpmnBehaviors.eventWriter();
+  public ExclusiveGatewayProcessor(final BpmnBehaviors behaviors) {
+    expressionBehavior = behaviors.expressionBehavior();
+    incidentBehavior = behaviors.incidentBehavior();
+    stateBehavior = behaviors.stateBehavior();
+    deferredRecordsBehavior = behaviors.deferredRecordsBehavior();
+    stateTransitionBehavior = behaviors.stateTransitionBehavior();
   }
 
   @Override
@@ -50,35 +54,45 @@ public class ExclusiveGatewayProcessor implements BpmnElementProcessor<Executabl
               record.wrap(context.getRecordValue());
               record.setElementId(sequenceFlow.getId());
               record.setBpmnElementType(BpmnElementType.SEQUENCE_FLOW);
-              eventWriter.deferRecord(
+              deferredRecordsBehavior.deferNewRecord(
                   context.getElementInstanceKey(),
                   record,
                   WorkflowInstanceIntent.SEQUENCE_FLOW_TAKEN);
             });
+    stateTransitionBehavior.transitionToActivated(context);
+    // TODO (saig0): update state because of the step guards
+    stateBehavior.updateElementInstance(
+        context,
+        elementInstance -> elementInstance.setState(WorkflowInstanceIntent.ELEMENT_ACTIVATED));
   }
 
   @Override
   public void onActivated(
-      final ExecutableExclusiveGateway element, final BpmnElementContext context) {}
+      final ExecutableExclusiveGateway element, final BpmnElementContext context) {
+    stateTransitionBehavior.transitionToCompleting(context);
+
+  }
 
   @Override
   public void onCompleting(
-      final ExecutableExclusiveGateway element, final BpmnElementContext context) {}
+      final ExecutableExclusiveGateway element, final BpmnElementContext context) {
+    stateTransitionBehavior.transitionToCompleted(context);
+  }
 
   @Override
   public void onCompleted(
       final ExecutableExclusiveGateway element, final BpmnElementContext context) {
-    //    publishDeferredRecords(context)
+    deferredRecordsBehavior.publishDeferredRecords(context);
 
     // from ElementCompletedHandler
-    //    if (isLastActiveExecutionPathInScope(context)) {
-    //      completeFlowScope(context);
-    //    }
+//    if (isLastActiveExecutionPathInScope(context)) {
+//      completeFlowScope(context);
+//    }
     // from AbstractTerminalStateHandler
-    //    final ElementInstance flowScopeInstance = context.getFlowScopeInstance();
-    //    if (flowScopeInstance != null) {
-    //      context.getStateDb().getElementInstanceState().consumeToken(flowScopeInstance.getKey());
-    //    }
+//    final ElementInstance flowScopeInstance = context.getFlowScopeInstance();
+//    if (flowScopeInstance != null) {
+//      context.getStateDb().getElementInstanceState().consumeToken(flowScopeInstance.getKey());
+//    }
   }
 
   @Override
@@ -91,7 +105,10 @@ public class ExclusiveGatewayProcessor implements BpmnElementProcessor<Executabl
 
   @Override
   public void onEventOccurred(
-      final ExecutableExclusiveGateway element, final BpmnElementContext context) {}
+      final ExecutableExclusiveGateway element, final BpmnElementContext context) {
+    throw new UnsupportedOperationException(
+        "expected to handle occurred event on exclusive gateway, but events should not occur on exclusive gateway");
+  }
 
   private Optional<ExecutableSequenceFlow> findSequenceFlowWithFulfilledConditionOrDefault(
       final ExecutableExclusiveGateway element, final BpmnElementContext context) {
@@ -116,7 +133,7 @@ public class ExclusiveGatewayProcessor implements BpmnElementProcessor<Executabl
       return Optional.of(defaultFlow);
 
     } else {
-      // todo: raise incident NO_OUTGOING_FLOW_CHOSEN_ERROR if unable to find any
+      // todo: move this incident creation outside of this method
       incidentBehavior.createIncident(
           ErrorType.CONDITION_ERROR, NO_OUTGOING_FLOW_CHOSEN_ERROR, context);
       return Optional.empty();

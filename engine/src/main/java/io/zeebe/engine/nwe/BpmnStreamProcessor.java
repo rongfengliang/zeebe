@@ -6,6 +6,7 @@ import io.zeebe.engine.nwe.behavior.BpmnBehaviorsImpl;
 import io.zeebe.engine.nwe.behavior.BpmnIncidentBehavior;
 import io.zeebe.engine.nwe.behavior.BpmnStateBehavior;
 import io.zeebe.engine.nwe.behavior.BpmnStateTransitionBehavior;
+import io.zeebe.engine.nwe.behavior.DeferredRecordsBehavior;
 import io.zeebe.engine.nwe.behavior.TypesStreamWriterProxy;
 import io.zeebe.engine.nwe.gateway.ExclusiveGatewayProcessor;
 import io.zeebe.engine.nwe.task.ServiceTaskProcessor;
@@ -54,7 +55,8 @@ public final class BpmnStreamProcessor implements TypedRecordProcessor<WorkflowI
             new BpmnIncidentBehavior(zeebeState, streamWriterProxy),
             new BpmnStateBehavior(zeebeState),
             new BpmnStateTransitionBehavior(streamWriterProxy),
-            streamWriterProxy);
+            streamWriterProxy,
+            new DeferredRecordsBehavior(zeebeState, streamWriterProxy));
 
     processors =
         Map.of(

@@ -1,5 +1,6 @@
 package io.zeebe.engine.nwe;
 
+import io.zeebe.engine.processor.SideEffectProducer;
 import io.zeebe.engine.processor.TypedRecord;
 import io.zeebe.engine.processor.TypedStreamWriter;
 import io.zeebe.engine.processor.workflow.BpmnStepContext;
@@ -9,6 +10,7 @@ import io.zeebe.engine.state.ZeebeState;
 import io.zeebe.engine.state.instance.WorkflowEngineState;
 import io.zeebe.protocol.impl.record.value.workflowinstance.WorkflowInstanceRecord;
 import io.zeebe.protocol.record.intent.WorkflowInstanceIntent;
+import java.util.function.Consumer;
 import org.agrona.DirectBuffer;
 
 public final class BpmnElementContextImpl implements BpmnElementContext {
@@ -66,7 +68,12 @@ public final class BpmnElementContextImpl implements BpmnElementContext {
   @Override
   public long getVariableScopeKey() {
     // TODO (saig0): variable scope key is sometimes not the element instance key
-    return elementInstanceKey;
+    switch (recordValue.getBpmnElementType()) {
+      case BOUNDARY_EVENT:
+        return getFlowScopeKey();
+      default:
+        return elementInstanceKey;
+    }
   }
 
   @Override
@@ -88,7 +95,8 @@ public final class BpmnElementContextImpl implements BpmnElementContext {
       final TypedRecord<WorkflowInstanceRecord> record,
       final WorkflowInstanceIntent intent,
       final ExecutableFlowElement element,
-      final TypedStreamWriter streamWriter) {
+      final TypedStreamWriter streamWriter,
+      final Consumer<SideEffectProducer> sideEffect) {
     elementInstanceKey = record.getKey();
     recordValue = record.getValue();
     this.intent = intent;
@@ -96,5 +104,9 @@ public final class BpmnElementContextImpl implements BpmnElementContext {
     stepContext.init(elementInstanceKey, recordValue, intent);
     stepContext.setElement(element);
     stepContext.getOutput().setStreamWriter(streamWriter);
+
+    // TODO (saig0): so message subscriptions are opened via side-effects
+    stepContext.getSideEffect().clear();
+    sideEffect.accept(stepContext.getSideEffect());
   }
 }

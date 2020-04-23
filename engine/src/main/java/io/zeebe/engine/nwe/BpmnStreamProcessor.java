@@ -100,7 +100,7 @@ public final class BpmnStreamProcessor implements TypedRecordProcessor<WorkflowI
 
     // initialize the stuff
     streamWriterProxy.wrap(streamWriter);
-    context.init(record, intent, element, streamWriterProxy);
+    context.init(record, intent, element, streamWriterProxy, sideEffect);
 
     // process the event
     processEvent(intent, processor, element);

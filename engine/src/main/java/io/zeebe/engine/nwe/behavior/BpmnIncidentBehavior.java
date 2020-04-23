@@ -39,12 +39,13 @@ public final class BpmnIncidentBehavior {
 
     incidentCommand.reset();
     incidentCommand
-        .setElementInstanceKey(context.getElementInstanceKey())
+        .setWorkflowInstanceKey(context.getWorkflowInstanceKey())
         .setBpmnProcessId(context.getBpmnProcessId())
         .setWorkflowKey(context.getWorkflowKey())
-        .setElementInstanceKey(context.getWorkflowInstanceKey())
+        .setElementInstanceKey(context.getElementInstanceKey())
         .setElementId(context.getElementId())
-        .setVariableScopeKey(context.getVariableScopeKey())
+        .setVariableScopeKey(
+            context.getVariableScopeKey()) // TODO (saig0): different key of boundary events
         .setErrorType(errorType)
         .setErrorMessage(errorMessage);
 

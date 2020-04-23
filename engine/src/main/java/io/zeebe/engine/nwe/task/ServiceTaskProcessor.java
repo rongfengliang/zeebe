@@ -13,11 +13,13 @@ import io.zeebe.engine.processor.workflow.CatchEventBehavior;
 import io.zeebe.engine.processor.workflow.ExpressionProcessor;
 import io.zeebe.engine.processor.workflow.deployment.model.element.ExecutableServiceTask;
 import io.zeebe.engine.processor.workflow.handlers.IOMappingHelper;
+import io.zeebe.engine.processor.workflow.message.MessageCorrelationKeyException;
 import io.zeebe.engine.state.instance.JobState.State;
 import io.zeebe.msgpack.value.DocumentValue;
 import io.zeebe.protocol.impl.record.value.job.JobRecord;
 import io.zeebe.protocol.record.intent.JobIntent;
 import io.zeebe.protocol.record.intent.WorkflowInstanceIntent;
+import io.zeebe.protocol.record.value.ErrorType;
 import io.zeebe.util.Either;
 import java.util.Optional;
 
@@ -55,7 +57,11 @@ public final class ServiceTaskProcessor implements BpmnElementProcessor<Executab
     // subscribe to events
 
     variableMappingBehavior.applyInputMappings(context.toStepContext());
-    eventSubscriptionBehavior.subscribeToEvents(context.toStepContext(), element);
+    try {
+      eventSubscriptionBehavior.subscribeToEvents(context.toStepContext(), element);
+    } catch (final MessageCorrelationKeyException e) {
+      incidentBehavior.createIncident(ErrorType.EXTRACT_VALUE_ERROR, e.getMessage(), context);
+    }
 
     stateTransitionBehavior.transitionToActivated(context);
 

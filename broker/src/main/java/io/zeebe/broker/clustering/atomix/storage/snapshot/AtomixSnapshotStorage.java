@@ -10,7 +10,6 @@ package io.zeebe.broker.clustering.atomix.storage.snapshot;
 import io.atomix.raft.storage.log.entry.RaftLogEntry;
 import io.atomix.raft.storage.snapshot.SnapshotListener;
 import io.atomix.raft.storage.snapshot.SnapshotStore;
-import io.atomix.raft.zeebe.ZeebeEntry;
 import io.atomix.storage.journal.Indexed;
 import io.atomix.utils.time.WallClockTimestamp;
 import io.zeebe.broker.clustering.atomix.storage.AtomixRecordEntrySupplier;

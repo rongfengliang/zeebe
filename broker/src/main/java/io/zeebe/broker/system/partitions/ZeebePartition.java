@@ -45,7 +45,6 @@ import io.zeebe.logstreams.state.SnapshotReplication;
 import io.zeebe.logstreams.state.SnapshotStorage;
 import io.zeebe.logstreams.state.StateSnapshotController;
 import io.zeebe.logstreams.storage.atomix.AtomixLogStorage;
-import io.zeebe.logstreams.storage.atomix.AtomixLogStorageReader;
 import io.zeebe.logstreams.storage.atomix.ZeebeIndexMapping;
 import io.zeebe.protocol.impl.encoding.BrokerInfo;
 import io.zeebe.util.FileUtil;
@@ -435,16 +434,14 @@ public final class ZeebePartition extends Actor
   // not applicable here; it is safe to ignore as we will close the object once we close the storage
   @SuppressWarnings("squid:S2095")
   private SnapshotStorage createSnapshotStorage(final Path pendingDirectory) {
-    final var reader =
-        new AtomixLogStorageReader(
-            zeebeIndexMapping, atomixRaftPartition.getServer().openReader(-1, Mode.COMMITS));
+    final var reader = atomixRaftPartition.getServer().openReader(-1, Mode.COMMITS);
     final var runtimeDirectory = atomixRaftPartition.dataDirectory().toPath().resolve("runtime");
 
     return new AtomixSnapshotStorage(
         runtimeDirectory,
         pendingDirectory,
         atomixRaftPartition.getServer().getSnapshotStore(),
-        new AtomixRecordEntrySupplierImpl(reader),
+        new AtomixRecordEntrySupplierImpl(zeebeIndexMapping, reader),
         new SnapshotMetrics(partitionId));
   }
 

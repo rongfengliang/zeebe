@@ -7,6 +7,7 @@
  */
 package io.zeebe.broker.clustering.atomix.storage.snapshot;
 
+import io.atomix.raft.storage.log.entry.RaftLogEntry;
 import io.atomix.raft.storage.snapshot.SnapshotListener;
 import io.atomix.raft.storage.snapshot.SnapshotStore;
 import io.atomix.raft.zeebe.ZeebeEntry;
@@ -162,7 +163,7 @@ public final class AtomixSnapshotStorage implements SnapshotStorage, SnapshotLis
     return pendingDirectory.resolve(metadata.getFileName());
   }
 
-  private Path getPendingDirectoryFor(final Indexed<ZeebeEntry> entry) {
+  private Path getPendingDirectoryFor(final Indexed<? extends RaftLogEntry> entry) {
     final var metadata =
         new DbSnapshotMetadata(
             entry.index(),
@@ -186,7 +187,7 @@ public final class AtomixSnapshotStorage implements SnapshotStorage, SnapshotLis
     metrics.setSnapshotCount(snapshots.size());
   }
 
-  private Snapshot getSnapshot(final Indexed<ZeebeEntry> indexed) {
+  private Snapshot getSnapshot(final Indexed<? extends RaftLogEntry> indexed) {
     final var pending = getPendingDirectoryFor(indexed);
     return new SnapshotImpl(indexed.index(), pending);
   }

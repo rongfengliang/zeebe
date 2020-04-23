@@ -13,14 +13,12 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
 import io.atomix.raft.storage.snapshot.SnapshotStore;
-import io.atomix.raft.zeebe.ZeebeEntry;
-import io.atomix.storage.journal.Indexed;
+import io.atomix.storage.journal.JournalReader.Mode;
 import io.zeebe.broker.clustering.atomix.storage.AtomixRecordEntrySupplier;
 import io.zeebe.logstreams.state.Snapshot;
 import io.zeebe.logstreams.state.SnapshotDeletionListener;
 import io.zeebe.logstreams.state.SnapshotMetrics;
 import io.zeebe.logstreams.state.SnapshotStorage;
-import io.zeebe.logstreams.storage.atomix.AtomixLogStorageReader;
 import io.zeebe.logstreams.util.AtomixLogStorageRule;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -54,7 +52,8 @@ public final class AtomixSnapshotStorageTest {
     pendingDirectory = temporaryFolder.newFolder("pushed-pending").toPath();
     entrySupplier =
         new AtomixRecordEntrySupplierImpl(
-            (AtomixLogStorageReader) logStorageRule.get().newReader());
+            logStorageRule.getIndexMapping(),
+            logStorageRule.getRaftLog().openReader(-1, Mode.COMMITS));
     store =
         new DbSnapshotStore(
             snapshotsDirectory, raftPendingDirectory, new ConcurrentSkipListMap<>());
@@ -176,7 +175,7 @@ public final class AtomixSnapshotStorageTest {
     final var storage = newStorage();
 
     // when
-    final var snapshot = newPendingSnapshot(1);
+    final var snapshot = newPendingSnapshot(2);
     Files.createDirectories(snapshot.getPath());
     storage.commitSnapshot(snapshot.getPath());
 

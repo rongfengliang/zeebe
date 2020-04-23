@@ -20,6 +20,10 @@ public final class BpmnStateBehavior {
     return elementInstanceState.getInstance(context.getElementInstanceKey());
   }
 
+  public void updateElementInstance(final ElementInstance elementInstance) {
+    elementInstanceState.updateInstance(elementInstance);
+  }
+
   public JobState getJobState() {
     return jobState;
   }

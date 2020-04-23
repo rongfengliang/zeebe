@@ -14,6 +14,7 @@ public final class BpmnBehaviorsImpl implements BpmnBehaviors {
   private final CatchEventBehavior eventSubscriptionBehavior;
   private final BpmnIncidentBehavior incidentBehavior;
   private final BpmnStateBehavior stateBehavior;
+  private final BpmnStateTransitionBehavior stateTransitionBehavior;
   private final TypedStreamWriter streamWriter;
 
   public BpmnBehaviorsImpl(
@@ -22,12 +23,14 @@ public final class BpmnBehaviorsImpl implements BpmnBehaviors {
       final CatchEventBehavior eventSubscriptionBehavior,
       final BpmnIncidentBehavior incidentBehavior,
       final BpmnStateBehavior stateBehavior,
+      final BpmnStateTransitionBehavior stateTransitionBehavior,
       final TypedStreamWriter streamWriter) {
     this.expressionBehavior = expressionBehavior;
     this.variableMappingBehavior = variableMappingBehavior;
     this.eventSubscriptionBehavior = eventSubscriptionBehavior;
     this.incidentBehavior = incidentBehavior;
     this.stateBehavior = stateBehavior;
+    this.stateTransitionBehavior = stateTransitionBehavior;
     this.streamWriter = streamWriter;
   }
 
@@ -64,5 +67,10 @@ public final class BpmnBehaviorsImpl implements BpmnBehaviors {
   @Override
   public EventOutput eventWriter() {
     return null;
+  }
+
+  @Override
+  public BpmnStateTransitionBehavior stateTransitionBehavior() {
+    return stateTransitionBehavior;
   }
 }

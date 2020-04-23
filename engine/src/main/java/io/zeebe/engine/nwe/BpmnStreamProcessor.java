@@ -5,6 +5,7 @@ import io.zeebe.engine.nwe.behavior.BpmnBehaviors;
 import io.zeebe.engine.nwe.behavior.BpmnBehaviorsImpl;
 import io.zeebe.engine.nwe.behavior.BpmnIncidentBehavior;
 import io.zeebe.engine.nwe.behavior.BpmnStateBehavior;
+import io.zeebe.engine.nwe.behavior.BpmnStateTransitionBehavior;
 import io.zeebe.engine.nwe.behavior.TypesStreamWriterProxy;
 import io.zeebe.engine.nwe.gateway.ExclusiveGatewayProcessor;
 import io.zeebe.engine.nwe.task.ServiceTaskProcessor;
@@ -52,6 +53,7 @@ public final class BpmnStreamProcessor implements TypedRecordProcessor<WorkflowI
             catchEventBehavior,
             new BpmnIncidentBehavior(zeebeState, streamWriterProxy),
             new BpmnStateBehavior(zeebeState),
+            new BpmnStateTransitionBehavior(streamWriterProxy),
             streamWriterProxy);
 
     processors =
@@ -109,7 +111,6 @@ public final class BpmnStreamProcessor implements TypedRecordProcessor<WorkflowI
     switch (intent) {
       case ELEMENT_ACTIVATING:
         processor.onActivating(element, context);
-        transitionTo(WorkflowInstanceIntent.ELEMENT_ACTIVATED);
         break;
       case ELEMENT_ACTIVATED:
         processor.onActivated(element, context);
@@ -119,7 +120,6 @@ public final class BpmnStreamProcessor implements TypedRecordProcessor<WorkflowI
         break;
       case ELEMENT_COMPLETING:
         processor.onCompleting(element, context);
-        transitionTo(WorkflowInstanceIntent.ELEMENT_COMPLETED);
         break;
       case ELEMENT_COMPLETED:
         processor.onCompleted(element, context);
@@ -135,10 +135,5 @@ public final class BpmnStreamProcessor implements TypedRecordProcessor<WorkflowI
             String.format(
                 "processor '%s' can not handle intent '%s'", processor.getClass(), intent));
     }
-  }
-
-  private void transitionTo(final WorkflowInstanceIntent intent) {
-    streamWriterProxy.appendFollowUpEvent(
-        context.getElementInstanceKey(), intent, context.getRecordValue());
   }
 }

@@ -21,4 +21,6 @@ public interface BpmnBehaviors {
   TypedCommandWriter commandWriter();
 
   EventOutput eventWriter();
+
+  BpmnStateTransitionBehavior stateTransitionBehavior();
 }

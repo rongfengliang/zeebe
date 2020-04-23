@@ -6,6 +6,7 @@ import io.zeebe.engine.nwe.BpmnElementProcessor;
 import io.zeebe.engine.nwe.behavior.BpmnBehaviors;
 import io.zeebe.engine.nwe.behavior.BpmnIncidentBehavior;
 import io.zeebe.engine.nwe.behavior.BpmnStateBehavior;
+import io.zeebe.engine.nwe.behavior.BpmnStateTransitionBehavior;
 import io.zeebe.engine.processor.Failure;
 import io.zeebe.engine.processor.TypedCommandWriter;
 import io.zeebe.engine.processor.workflow.CatchEventBehavior;
@@ -16,6 +17,7 @@ import io.zeebe.engine.state.instance.JobState.State;
 import io.zeebe.msgpack.value.DocumentValue;
 import io.zeebe.protocol.impl.record.value.job.JobRecord;
 import io.zeebe.protocol.record.intent.JobIntent;
+import io.zeebe.protocol.record.intent.WorkflowInstanceIntent;
 import io.zeebe.util.Either;
 import java.util.Optional;
 
@@ -29,6 +31,7 @@ public final class ServiceTaskProcessor implements BpmnElementProcessor<Executab
   private final TypedCommandWriter commandWriter;
   private final BpmnIncidentBehavior incidentBehavior;
   private final BpmnStateBehavior stateBehavior;
+  private final BpmnStateTransitionBehavior stateTransitionBehavior;
 
   public ServiceTaskProcessor(final BpmnBehaviors behaviors) {
     variableMappingBehavior = behaviors.variableMappingBehavior();
@@ -37,6 +40,7 @@ public final class ServiceTaskProcessor implements BpmnElementProcessor<Executab
     commandWriter = behaviors.commandWriter();
     incidentBehavior = behaviors.incidentBehavior();
     stateBehavior = behaviors.stateBehavior();
+    stateTransitionBehavior = behaviors.stateTransitionBehavior();
   }
 
   @Override
@@ -52,6 +56,8 @@ public final class ServiceTaskProcessor implements BpmnElementProcessor<Executab
 
     variableMappingBehavior.applyInputMappings(context.toStepContext());
     eventSubscriptionBehavior.subscribeToEvents(context.toStepContext(), element);
+
+    stateTransitionBehavior.transitionToActivated(context);
   }
 
   @Override
@@ -84,6 +90,8 @@ public final class ServiceTaskProcessor implements BpmnElementProcessor<Executab
     variableMappingBehavior.applyOutputMappings(context.toStepContext());
     eventSubscriptionBehavior.unsubscribeFromEvents(
         context.getElementInstanceKey(), context.toStepContext());
+
+    stateTransitionBehavior.transitionToCompleted(context);
   }
 
   @Override
@@ -114,6 +122,12 @@ public final class ServiceTaskProcessor implements BpmnElementProcessor<Executab
 
     eventSubscriptionBehavior.unsubscribeFromEvents(
         context.getElementInstanceKey(), context.toStepContext());
+
+    stateTransitionBehavior.transitionToTerminated(context);
+
+    // TODO (saig0): update state because of the step guards
+    elementInstance.setState(WorkflowInstanceIntent.ELEMENT_TERMINATED);
+    stateBehavior.updateElementInstance(elementInstance);
   }
 
   @Override

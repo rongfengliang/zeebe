@@ -56,6 +56,10 @@ public class StateSnapshotController implements SnapshotController {
 
   @Override
   public Optional<Snapshot> takeSnapshot(final long lowerBoundSnapshotPosition) {
+    if (!isDbOpened()) {
+      return Optional.empty();
+    }
+
     final long exportedPosition = exporterPositionSupplier.applyAsLong(openDb());
     final long snapshotPosition = Math.min(exportedPosition, lowerBoundSnapshotPosition);
     final var optionalSnapshot = storage.getPendingSnapshotFor(snapshotPosition);
@@ -64,6 +68,10 @@ public class StateSnapshotController implements SnapshotController {
 
   @Override
   public Optional<Snapshot> takeTempSnapshot(final long lowerBoundSnapshotPosition) {
+    if (!isDbOpened()) {
+      return Optional.empty();
+    }
+
     final long exportedPosition = exporterPositionSupplier.applyAsLong(openDb());
     final long snapshotPosition = Math.min(exportedPosition, lowerBoundSnapshotPosition);
     final var optionalSnapshot = storage.getPendingSnapshotFor(snapshotPosition);

@@ -26,7 +26,6 @@ import io.zeebe.logstreams.storage.atomix.AtomixAppenderSupplier;
 import io.zeebe.logstreams.storage.atomix.AtomixLogStorage;
 import io.zeebe.logstreams.storage.atomix.AtomixReaderFactory;
 import io.zeebe.logstreams.storage.atomix.ZeebeIndexAdapter;
-import io.zeebe.logstreams.storage.atomix.ZeebeIndexMapping;
 import java.io.File;
 import java.io.IOException;
 import java.io.UncheckedIOException;

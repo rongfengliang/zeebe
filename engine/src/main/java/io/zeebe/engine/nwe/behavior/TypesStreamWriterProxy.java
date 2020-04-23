@@ -65,7 +65,7 @@ public final class TypesStreamWriterProxy implements TypedStreamWriter {
   @Override
   public void appendFollowUpCommand(
       final long key, final Intent intent, final UnpackedObject value) {
-    writer.appendFollowUpEvent(key, intent, value);
+    writer.appendFollowUpCommand(key, intent, value);
   }
 
   @Override
@@ -74,7 +74,7 @@ public final class TypesStreamWriterProxy implements TypedStreamWriter {
       final Intent intent,
       final UnpackedObject value,
       final Consumer<RecordMetadata> metadata) {
-    writer.appendFollowUpEvent(key, intent, value, metadata);
+    writer.appendFollowUpCommand(key, intent, value, metadata);
   }
 
   @Override

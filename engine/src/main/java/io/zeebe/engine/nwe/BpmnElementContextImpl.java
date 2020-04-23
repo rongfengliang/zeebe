@@ -1,9 +1,12 @@
 package io.zeebe.engine.nwe;
 
 import io.zeebe.engine.processor.TypedRecord;
+import io.zeebe.engine.processor.TypedStreamWriter;
 import io.zeebe.engine.processor.workflow.BpmnStepContext;
+import io.zeebe.engine.processor.workflow.EventOutput;
 import io.zeebe.engine.processor.workflow.deployment.model.element.ExecutableFlowElement;
 import io.zeebe.engine.state.ZeebeState;
+import io.zeebe.engine.state.instance.WorkflowEngineState;
 import io.zeebe.protocol.impl.record.value.workflowinstance.WorkflowInstanceRecord;
 import io.zeebe.protocol.record.intent.WorkflowInstanceIntent;
 import org.agrona.DirectBuffer;
@@ -18,7 +21,11 @@ public final class BpmnElementContextImpl implements BpmnElementContext {
   private final BpmnStepContext<?> stepContext;
 
   public BpmnElementContextImpl(final ZeebeState zeebeState) {
-    stepContext = new BpmnStepContext<>(zeebeState.getWorkflowState(), null);
+    final var eventOutput =
+        new EventOutput(
+            new WorkflowEngineState(1, zeebeState.getWorkflowState()),
+            zeebeState.getKeyGenerator());
+    stepContext = new BpmnStepContext<>(zeebeState.getWorkflowState(), eventOutput);
   }
 
   @Override
@@ -80,12 +87,14 @@ public final class BpmnElementContextImpl implements BpmnElementContext {
   public void init(
       final TypedRecord<WorkflowInstanceRecord> record,
       final WorkflowInstanceIntent intent,
-      final ExecutableFlowElement element) {
+      final ExecutableFlowElement element,
+      final TypedStreamWriter streamWriter) {
     elementInstanceKey = record.getKey();
     recordValue = record.getValue();
     this.intent = intent;
 
     stepContext.init(elementInstanceKey, recordValue, intent);
     stepContext.setElement(element);
+    stepContext.getOutput().setStreamWriter(streamWriter);
   }
 }

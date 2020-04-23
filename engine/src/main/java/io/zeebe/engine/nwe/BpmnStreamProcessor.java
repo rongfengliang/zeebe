@@ -1,12 +1,12 @@
 package io.zeebe.engine.nwe;
 
 import io.zeebe.engine.Loggers;
-import io.zeebe.engine.nwe.gateway.ExclusiveGatewayProcessor;
 import io.zeebe.engine.nwe.behavior.BpmnBehaviors;
 import io.zeebe.engine.nwe.behavior.BpmnBehaviorsImpl;
 import io.zeebe.engine.nwe.behavior.BpmnIncidentBehavior;
 import io.zeebe.engine.nwe.behavior.BpmnStateBehavior;
 import io.zeebe.engine.nwe.behavior.TypesStreamWriterProxy;
+import io.zeebe.engine.nwe.gateway.ExclusiveGatewayProcessor;
 import io.zeebe.engine.nwe.task.ServiceTaskProcessor;
 import io.zeebe.engine.processor.SideEffectProducer;
 import io.zeebe.engine.processor.TypedRecord;
@@ -54,9 +54,10 @@ public final class BpmnStreamProcessor implements TypedRecordProcessor<WorkflowI
             new BpmnStateBehavior(zeebeState),
             streamWriterProxy);
 
-    processors = Map.of(
-        BpmnElementType.SERVICE_TASK, new ServiceTaskProcessor(bpmnBehaviors),
-        BpmnElementType.EXCLUSIVE_GATEWAY, new ExclusiveGatewayProcessor(bpmnBehaviors));
+    processors =
+        Map.of(
+            BpmnElementType.SERVICE_TASK, new ServiceTaskProcessor(bpmnBehaviors),
+            BpmnElementType.EXCLUSIVE_GATEWAY, new ExclusiveGatewayProcessor(bpmnBehaviors));
 
     context = new BpmnElementContextImpl(zeebeState);
   }
@@ -93,8 +94,8 @@ public final class BpmnStreamProcessor implements TypedRecordProcessor<WorkflowI
         intent);
 
     // initialize the stuff
-    context.init(record, intent, element);
     streamWriterProxy.wrap(streamWriter);
+    context.init(record, intent, element, streamWriterProxy);
 
     // process the event
     processEvent(intent, processor, element);

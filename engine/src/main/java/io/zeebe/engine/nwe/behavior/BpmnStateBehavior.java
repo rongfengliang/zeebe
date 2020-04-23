@@ -5,6 +5,7 @@ import io.zeebe.engine.state.ZeebeState;
 import io.zeebe.engine.state.instance.ElementInstance;
 import io.zeebe.engine.state.instance.ElementInstanceState;
 import io.zeebe.engine.state.instance.JobState;
+import java.util.function.Consumer;
 
 public final class BpmnStateBehavior {
 
@@ -22,6 +23,13 @@ public final class BpmnStateBehavior {
 
   public void updateElementInstance(final ElementInstance elementInstance) {
     elementInstanceState.updateInstance(elementInstance);
+  }
+
+  public void updateElementInstance(
+      final BpmnElementContext context, final Consumer<ElementInstance> modifier) {
+    final var elementInstance = getElementInstance(context);
+    modifier.accept(elementInstance);
+    updateElementInstance(elementInstance);
   }
 
   public JobState getJobState() {

@@ -58,6 +58,11 @@ public final class ServiceTaskProcessor implements BpmnElementProcessor<Executab
     eventSubscriptionBehavior.subscribeToEvents(context.toStepContext(), element);
 
     stateTransitionBehavior.transitionToActivated(context);
+
+    // TODO (saig0): update state because of the step guards
+    stateBehavior.updateElementInstance(
+        context,
+        elementInstance -> elementInstance.setState(WorkflowInstanceIntent.ELEMENT_ACTIVATED));
   }
 
   @Override

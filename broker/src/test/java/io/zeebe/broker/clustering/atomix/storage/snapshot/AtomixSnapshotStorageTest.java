@@ -66,9 +66,15 @@ public final class AtomixSnapshotStorageTest {
   }
 
   @Test
-  public void shouldGetPendingSnapshotForNegativePosition() {
+  public void shouldNotGetPendingSnapshotForNegativePosition() {
     // given
     final var storage = newStorage();
+    logStorageRule.appendEntry(1, 1, ByteBuffer.allocate(1));
+
+    // when
+    final var snapshot = storage.getPendingSnapshotFor(-1);
+    // then
+    assertThat(snapshot).isEmpty();
   }
 
   @Test
@@ -216,6 +222,23 @@ public final class AtomixSnapshotStorageTest {
     final var second = newCommittedSnapshot(2);
     verify(listener).onSnapshotsDeleted(eq(second));
     assertThat(storage.getSnapshots()).hasSize(1).containsExactly(second);
+  }
+
+  @Test
+  public void shouldNotCreatePendingSnapshotIfSnapshotExistsForIndex() throws IOException {
+    // given
+    final var storage = newStorage();
+    logStorageRule.appendEntry(2, 2, ByteBuffer.allocate(1));
+    logStorageRule.appendEntry(3, 3, ByteBuffer.allocate(1));
+    final var snapshot = storage.getPendingSnapshotFor(3).orElseThrow();
+    Files.createDirectories(snapshot.getPath());
+    storage.commitSnapshot(snapshot.getPath()).orElseThrow();
+
+    // when
+    final var newSnapshot = storage.getPendingSnapshotFor(3);
+
+    // then
+    assertThat(newSnapshot).isEmpty();
   }
 
   private Snapshot newPendingSnapshot(final long position) {

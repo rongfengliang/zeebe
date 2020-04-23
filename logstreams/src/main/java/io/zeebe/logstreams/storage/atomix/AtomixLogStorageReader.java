@@ -152,7 +152,7 @@ public final class AtomixLogStorageReader implements LogStorageReader {
       reader.reset(index);
     }
 
-    while (reader.hasNext()) {
+    while (reader.hasNext() && reader.getNextIndex() <= index) {
       final var entry = reader.next();
       if (entry.type().equals(ZeebeEntry.class)) {
         return Optional.of(entry.cast());

@@ -39,7 +39,9 @@ env:
   - name: ZEEBE_BROKER_EXECUTION_METRICS_EXPORTER_ENABLED
     value: "true"
   - name: ZEEBE_BROKER_GATEWAY_ENABLE
-    value: "true"
+    value: "true"		
+  - name: ZEEBE_BROKER_DATA_SNAPSHOTPERIOD		
+    value: "1m"
 
 # RESOURCES
 resources:

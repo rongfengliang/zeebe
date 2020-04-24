@@ -38,8 +38,8 @@ public final class BpmnStepContext<T extends ExecutableFlowElement> {
   private ExecutableFlowElement element;
   private TypedCommandWriter commandWriter;
 
-  private TypedRecord<WorkflowInstanceRecord> record_;
-  private Consumer<SideEffectProducer> sideEffect_;
+  private TypedRecord<WorkflowInstanceRecord> record;
+  private Consumer<SideEffectProducer> sideEffectConsumer;
 
   public BpmnStepContext(final WorkflowState stateDb, final EventOutput eventOutput) {
     this.stateDb = stateDb;
@@ -139,19 +139,19 @@ public final class BpmnStepContext<T extends ExecutableFlowElement> {
     return stateDb.getElementInstanceState();
   }
 
-  public TypedRecord<WorkflowInstanceRecord> getRecord_() {
-    return record_;
+  public TypedRecord<WorkflowInstanceRecord> getRecord() {
+    return record;
   }
 
-  public void setRecord_(final TypedRecord<WorkflowInstanceRecord> record) {
-    record_ = record;
+  public void setRecord(final TypedRecord<WorkflowInstanceRecord> record) {
+    this.record = record;
   }
 
-  public Consumer<SideEffectProducer> getSideEffect_() {
-    return sideEffect_;
+  public Consumer<SideEffectProducer> getSideEffectConsumer() {
+    return sideEffectConsumer;
   }
 
-  public void setSideEffect_(final Consumer<SideEffectProducer> sideEffect) {
-    sideEffect_ = sideEffect;
+  public void setSideEffectConsumer(final Consumer<SideEffectProducer> sideEffect) {
+    sideEffectConsumer = sideEffect;
   }
 }

@@ -95,8 +95,8 @@ public final class BpmnStepProcessor implements TypedRecordProcessor<WorkflowIns
     context.setStreamWriter(streamWriter);
     context.setResponseWriter(responseWriter);
 
-    context.setRecord_(record);
-    context.setSideEffect_(sideEffect);
+    context.setRecord(record);
+    context.setSideEffectConsumer(sideEffect);
 
     context.getSideEffect().clear();
     sideEffect.accept(context.getSideEffect());

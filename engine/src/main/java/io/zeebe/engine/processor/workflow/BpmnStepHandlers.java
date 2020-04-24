@@ -238,10 +238,10 @@ public final class BpmnStepHandlers {
     if (step == BpmnStep.BPMN_ELEMENT_PROCESSOR) {
       // TODO (saig0): hack the new BPMN element processor in
       bpmnStreamProcessor.processRecord(
-          context.getRecord_(),
+          context.getRecord(),
           context.getOutput().getResponseWriter(),
           context.getOutput().getStreamWriter(),
-          context.getSideEffect_());
+          context.getSideEffectConsumer());
       return;
     }
 

@@ -35,7 +35,12 @@ public final class BpmnIncidentBehavior {
   }
 
   public void createIncident(
-      final ErrorType errorType, final String errorMessage, final BpmnElementContext context) {
+      final ErrorType errorType,
+      final String errorMessage,
+      final BpmnElementContext context,
+      final long variableScopeKey) {
+
+    // TODO (saig0): the variable scope key should be resolved on a central place
 
     incidentCommand.reset();
     incidentCommand
@@ -44,8 +49,7 @@ public final class BpmnIncidentBehavior {
         .setWorkflowKey(context.getWorkflowKey())
         .setElementInstanceKey(context.getElementInstanceKey())
         .setElementId(context.getElementId())
-        .setVariableScopeKey(
-            context.getVariableScopeKey()) // TODO (saig0): different key of boundary events
+        .setVariableScopeKey(variableScopeKey)
         .setErrorType(errorType)
         .setErrorMessage(errorMessage);
 

@@ -65,8 +65,16 @@ public final class ServiceTaskProcessor implements BpmnElementProcessor<Executab
 
     try {
       eventSubscriptionBehavior.subscribeToEvents(context.toStepContext(), element);
-    } catch (final MessageCorrelationKeyException | EvaluationException e) {
-      incidentBehavior.createIncident(ErrorType.EXTRACT_VALUE_ERROR, e.getMessage(), context);
+    } catch (final MessageCorrelationKeyException e) {
+      incidentBehavior.createIncident(
+          ErrorType.EXTRACT_VALUE_ERROR,
+          e.getMessage(),
+          context,
+          e.getContext().getVariablesScopeKey());
+      return;
+    } catch (final EvaluationException e) {
+      incidentBehavior.createIncident(
+          ErrorType.EXTRACT_VALUE_ERROR, e.getMessage(), context, context.getElementInstanceKey());
       return;
     }
 
@@ -94,7 +102,11 @@ public final class ServiceTaskProcessor implements BpmnElementProcessor<Executab
     // TODO (saig0): I want either.flapMap and consuming methods =)
     if (optJobType.isLeft()) {
       final var failure = optJobType.getLeft();
-      incidentBehavior.createIncident(ErrorType.EXTRACT_VALUE_ERROR, failure.getMessage(), context);
+      incidentBehavior.createIncident(
+          ErrorType.EXTRACT_VALUE_ERROR,
+          failure.getMessage(),
+          context,
+          context.getElementInstanceKey());
       return;
     }
 

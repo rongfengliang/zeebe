@@ -22,8 +22,6 @@ public interface BpmnElementContext {
 
   DirectBuffer getElementId();
 
-  long getVariableScopeKey();
-
   // ---- for migration ----
   <T extends ExecutableFlowElement> BpmnStepContext<T> toStepContext();
 

@@ -66,17 +66,6 @@ public final class BpmnElementContextImpl implements BpmnElementContext {
   }
 
   @Override
-  public long getVariableScopeKey() {
-    // TODO (saig0): variable scope key is sometimes not the element instance key
-    switch (recordValue.getBpmnElementType()) {
-      case BOUNDARY_EVENT:
-        return getFlowScopeKey();
-      default:
-        return elementInstanceKey;
-    }
-  }
-
-  @Override
   public <T extends ExecutableFlowElement> BpmnStepContext<T> toStepContext() {
     return (BpmnStepContext<T>) stepContext;
   }

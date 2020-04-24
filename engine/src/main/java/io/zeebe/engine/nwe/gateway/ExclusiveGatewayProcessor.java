@@ -132,7 +132,10 @@ public class ExclusiveGatewayProcessor implements BpmnElementProcessor<Executabl
     } else {
       // todo: move this incident creation outside of this method
       incidentBehavior.createIncident(
-          ErrorType.CONDITION_ERROR, NO_OUTGOING_FLOW_CHOSEN_ERROR, context);
+          ErrorType.CONDITION_ERROR,
+          NO_OUTGOING_FLOW_CHOSEN_ERROR,
+          context,
+          context.getElementInstanceKey());
       return Optional.empty();
     }
   }

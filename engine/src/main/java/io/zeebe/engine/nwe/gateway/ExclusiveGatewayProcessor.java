@@ -58,19 +58,20 @@ public class ExclusiveGatewayProcessor implements BpmnElementProcessor<Executabl
                   context.getElementInstanceKey(),
                   record,
                   WorkflowInstanceIntent.SEQUENCE_FLOW_TAKEN);
+
+              stateTransitionBehavior.transitionToActivated(context);
+              // TODO (saig0): update state because of the step guards
+              stateBehavior.updateElementInstance(
+                  context,
+                  elementInstance ->
+                      elementInstance.setState(WorkflowInstanceIntent.ELEMENT_ACTIVATED));
             });
-    stateTransitionBehavior.transitionToActivated(context);
-    // TODO (saig0): update state because of the step guards
-    stateBehavior.updateElementInstance(
-        context,
-        elementInstance -> elementInstance.setState(WorkflowInstanceIntent.ELEMENT_ACTIVATED));
   }
 
   @Override
   public void onActivated(
       final ExecutableExclusiveGateway element, final BpmnElementContext context) {
     stateTransitionBehavior.transitionToCompleting(context);
-
   }
 
   @Override

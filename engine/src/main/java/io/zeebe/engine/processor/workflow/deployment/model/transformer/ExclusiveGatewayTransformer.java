@@ -50,6 +50,8 @@ public final class ExclusiveGatewayTransformer
           WorkflowInstanceIntent.ELEMENT_ACTIVATING, BpmnStep.BPMN_ELEMENT_PROCESSOR);
       gateway.bindLifecycleState(
           WorkflowInstanceIntent.ELEMENT_COMPLETED, BpmnStep.BPMN_ELEMENT_PROCESSOR);
+      gateway.bindLifecycleState(
+          WorkflowInstanceIntent.ELEMENT_TERMINATING, BpmnStep.BPMN_ELEMENT_PROCESSOR);
     }
   }
 

@@ -95,13 +95,20 @@ public class ExclusiveGatewayProcessor implements BpmnElementProcessor<Executabl
     if (stateBehavior.isLastActiveExecutionPathInScope(context)) {
       stateBehavior.completeFlowScope(context);
     }
-    // from AbstractTerminalStateHandler
+
     stateBehavior.consumeToken(context);
   }
 
   @Override
   public void onTerminating(
-      final ExecutableExclusiveGateway element, final BpmnElementContext context) {}
+      final ExecutableExclusiveGateway element, final BpmnElementContext context) {
+    stateTransitionBehavior.transitionToTerminated(context);
+
+    // TODO (saig0): update state because of the step guards
+    final var elementInstance = stateBehavior.getElementInstance(context);
+    elementInstance.setState(WorkflowInstanceIntent.ELEMENT_TERMINATED);
+    stateBehavior.updateElementInstance(elementInstance);
+  }
 
   @Override
   public void onTerminated(

@@ -1,3 +1,10 @@
+/*
+ * Copyright Camunda Services GmbH and/or licensed to Camunda Services GmbH under
+ * one or more contributor license agreements. See the NOTICE file distributed
+ * with this work for additional information regarding copyright ownership.
+ * Licensed under the Zeebe Community License 1.0. You may not use this file
+ * except in compliance with the Zeebe Community License 1.0.
+ */
 package io.zeebe.engine.nwe.behavior;
 
 import io.zeebe.engine.nwe.BpmnElementContext;
@@ -15,8 +22,8 @@ public final class BpmnStateBehavior {
   private final JobState jobState;
   private final TypesStreamWriterProxy streamWriter;
 
-  public BpmnStateBehavior(final ZeebeState zeebeState,
-      final TypesStreamWriterProxy streamWriterProxy) {
+  public BpmnStateBehavior(
+      final ZeebeState zeebeState, final TypesStreamWriterProxy streamWriterProxy) {
     elementInstanceState = zeebeState.getWorkflowState().getElementInstanceState();
     jobState = zeebeState.getJobState();
     streamWriter = streamWriterProxy;
@@ -63,11 +70,10 @@ public final class BpmnStateBehavior {
     final ElementInstance flowScopeInstance = getFlowScopeInstance(context);
     final WorkflowInstanceRecord flowScopeInstanceValue = flowScopeInstance.getValue();
 
-    streamWriter
-        .appendFollowUpEvent(
-            flowScopeInstance.getKey(),
-            WorkflowInstanceIntent.ELEMENT_COMPLETING,
-            flowScopeInstanceValue);
+    streamWriter.appendFollowUpEvent(
+        flowScopeInstance.getKey(),
+        WorkflowInstanceIntent.ELEMENT_COMPLETING,
+        flowScopeInstanceValue);
   }
 
   public void consumeToken(final BpmnElementContext context) {

@@ -1,3 +1,10 @@
+/*
+ * Copyright Camunda Services GmbH and/or licensed to Camunda Services GmbH under
+ * one or more contributor license agreements. See the NOTICE file distributed
+ * with this work for additional information regarding copyright ownership.
+ * Licensed under the Zeebe Community License 1.0. You may not use this file
+ * except in compliance with the Zeebe Community License 1.0.
+ */
 package io.zeebe.engine.nwe.behavior;
 
 import io.zeebe.engine.nwe.BpmnElementContext;
@@ -19,16 +26,16 @@ public class DeferredRecordsBehavior {
   private final ElementInstanceState elementInstanceState;
   private final KeyGenerator keyGenerator;
 
-  public DeferredRecordsBehavior(final ZeebeState zeebeState,
-      final TypedStreamWriter streamWriter) {
+  public DeferredRecordsBehavior(
+      final ZeebeState zeebeState, final TypedStreamWriter streamWriter) {
     this.workflowEngineState = new WorkflowEngineState(1, zeebeState.getWorkflowState());
     this.elementInstanceState = zeebeState.getWorkflowState().getElementInstanceState();
     this.streamWriter = streamWriter;
     this.keyGenerator = zeebeState.getKeyGenerator();
   }
 
-  public void deferNewRecord(final long scopeKey, final WorkflowInstanceRecord value,
-      final WorkflowInstanceIntent state) {
+  public void deferNewRecord(
+      final long scopeKey, final WorkflowInstanceRecord value, final WorkflowInstanceIntent state) {
     final long key = keyGenerator.nextKey();
     workflowEngineState.deferRecord(key, scopeKey, value, state);
   }

@@ -18,6 +18,7 @@ import io.zeebe.engine.processor.TypedStreamWriter;
 import io.zeebe.engine.processor.workflow.CatchEventBehavior;
 import io.zeebe.engine.processor.workflow.ExpressionProcessor;
 import io.zeebe.engine.processor.workflow.deployment.model.element.ExecutableFlowElement;
+import io.zeebe.engine.processor.workflow.deployment.model.element.ExecutableMultiInstanceBody;
 import io.zeebe.engine.processor.workflow.handlers.IOMappingHelper;
 import io.zeebe.engine.state.ZeebeState;
 import io.zeebe.engine.state.deployment.WorkflowState;
@@ -60,7 +61,8 @@ public final class BpmnStreamProcessor implements TypedRecordProcessor<WorkflowI
 
     processors =
         Map.of(
-            BpmnElementType.SERVICE_TASK, new ServiceTaskProcessor(bpmnBehaviors),
+            BpmnElementType.SERVICE_TASK,
+            new ServiceTaskProcessor(bpmnBehaviors),
             BpmnElementType.EXCLUSIVE_GATEWAY,
             new ExclusiveGatewayProcessor(bpmnBehaviors));
 
@@ -89,9 +91,7 @@ public final class BpmnStreamProcessor implements TypedRecordProcessor<WorkflowI
     final var bpmnElementType = recordValue.getBpmnElementType();
     final var processor = getProcessor(bpmnElementType);
 
-    final var element =
-        workflowState.getFlowElement(
-            recordValue.getWorkflowKey(), recordValue.getElementIdBuffer(), processor.getType());
+    final ExecutableFlowElement element = getElement(recordValue, processor);
 
     LOGGER.info(
         "[NEW] process workflow instance event [BPMN element type: {}, intent: {}]",
@@ -104,6 +104,26 @@ public final class BpmnStreamProcessor implements TypedRecordProcessor<WorkflowI
 
     // process the event
     processEvent(intent, processor, element);
+  }
+
+  private ExecutableFlowElement getElement(
+      final WorkflowInstanceRecord recordValue,
+      final BpmnElementProcessor<ExecutableFlowElement> processor) {
+
+    // TODO (saig0): handle multi-instance body
+    final var element =
+        workflowState
+            .getWorkflowByKey(recordValue.getWorkflowKey())
+            .getWorkflow()
+            .getElementById(recordValue.getElementIdBuffer());
+
+    if (element instanceof ExecutableMultiInstanceBody) {
+      final var multiInstanceBody = (ExecutableMultiInstanceBody) element;
+      return multiInstanceBody.getInnerActivity();
+    }
+
+    return workflowState.getFlowElement(
+        recordValue.getWorkflowKey(), recordValue.getElementIdBuffer(), processor.getType());
   }
 
   private void processEvent(

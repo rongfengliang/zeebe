@@ -14,6 +14,7 @@ import io.zeebe.engine.nwe.behavior.BpmnBehaviors;
 import io.zeebe.engine.nwe.behavior.BpmnIncidentBehavior;
 import io.zeebe.engine.nwe.behavior.BpmnStateBehavior;
 import io.zeebe.engine.nwe.behavior.BpmnStateTransitionBehavior;
+import io.zeebe.engine.nwe.behavior.DeferredRecordsBehavior;
 import io.zeebe.engine.processor.Failure;
 import io.zeebe.engine.processor.TypedCommandWriter;
 import io.zeebe.engine.processor.workflow.CatchEventBehavior;
@@ -39,6 +40,7 @@ public final class ServiceTaskProcessor implements BpmnElementProcessor<Executab
   private final CatchEventBehavior eventSubscriptionBehavior;
   private final ExpressionProcessor expressionBehavior;
   private final TypedCommandWriter commandWriter;
+  private final DeferredRecordsBehavior deferredRecordsBehavior;
   private final BpmnIncidentBehavior incidentBehavior;
   private final BpmnStateBehavior stateBehavior;
   private final BpmnStateTransitionBehavior stateTransitionBehavior;
@@ -48,6 +50,7 @@ public final class ServiceTaskProcessor implements BpmnElementProcessor<Executab
     eventSubscriptionBehavior = behaviors.eventSubscriptionBehavior();
     expressionBehavior = behaviors.expressionBehavior();
     commandWriter = behaviors.commandWriter();
+    deferredRecordsBehavior = behaviors.deferredRecordsBehavior();
     incidentBehavior = behaviors.incidentBehavior();
     stateBehavior = behaviors.stateBehavior();
     stateTransitionBehavior = behaviors.stateTransitionBehavior();
@@ -221,10 +224,17 @@ public final class ServiceTaskProcessor implements BpmnElementProcessor<Executab
   public void onTerminated(final ExecutableServiceTask element, final BpmnElementContext context) {
     // for all activities:
     // publish deferred events (i.e. an occurred boundary event)
+    deferredRecordsBehavior.publishDeferredRecords(context);
+
     // resolve incidents
+    incidentBehavior.resolveIncidents(context);
+
     // terminate scope if scope is terminated and last active token
     // publish deferred event if an interrupting event sub-process was triggered
+    stateBehavior.terminateFlowScope(context); // interruption is part of this (still)
+
     // consume token
+    stateBehavior.consumeToken(context);
   }
 
   @Override

@@ -62,7 +62,7 @@ public final class BpmnStreamProcessor implements TypedRecordProcessor<WorkflowI
             catchEventBehavior,
             new BpmnIncidentBehavior(zeebeState, streamWriterProxy),
             new BpmnStateBehavior(zeebeState, streamWriterProxy),
-            new BpmnStateTransitionBehavior(streamWriterProxy),
+            new BpmnStateTransitionBehavior(streamWriterProxy, zeebeState.getKeyGenerator()),
             streamWriterProxy,
             new DeferredRecordsBehavior(zeebeState, streamWriterProxy));
 

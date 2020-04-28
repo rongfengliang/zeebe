@@ -13,6 +13,7 @@ import io.zeebe.engine.state.ZeebeState;
 import io.zeebe.engine.state.instance.ElementInstance;
 import io.zeebe.engine.state.instance.ElementInstanceState;
 import io.zeebe.engine.state.instance.IndexedRecord;
+import io.zeebe.engine.state.instance.EventScopeInstanceState;
 import io.zeebe.engine.state.instance.JobState;
 import io.zeebe.protocol.impl.record.value.workflowinstance.WorkflowInstanceRecord;
 import io.zeebe.protocol.record.intent.WorkflowInstanceIntent;
@@ -22,12 +23,16 @@ import java.util.function.Consumer;
 public final class BpmnStateBehavior {
 
   private final ElementInstanceState elementInstanceState;
+  private final EventScopeInstanceState eventScopeInstanceState;
   private final JobState jobState;
+
   private final TypesStreamWriterProxy streamWriter;
 
   public BpmnStateBehavior(
       final ZeebeState zeebeState, final TypesStreamWriterProxy streamWriterProxy) {
-    elementInstanceState = zeebeState.getWorkflowState().getElementInstanceState();
+    final var workflowState = zeebeState.getWorkflowState();
+    elementInstanceState = workflowState.getElementInstanceState();
+    eventScopeInstanceState = workflowState.getEventScopeInstanceState();
     jobState = zeebeState.getJobState();
     streamWriter = streamWriterProxy;
   }
@@ -43,6 +48,13 @@ public final class BpmnStateBehavior {
   public void updateElementInstance(
       final BpmnElementContext context, final Consumer<ElementInstance> modifier) {
     final var elementInstance = getElementInstance(context);
+    modifier.accept(elementInstance);
+    updateElementInstance(elementInstance);
+  }
+
+  public void updateFlowScopeInstance(
+      final BpmnElementContext context, final Consumer<ElementInstance> modifier) {
+    final var elementInstance = getFlowScopeInstance(context);
     modifier.accept(elementInstance);
     updateElementInstance(elementInstance);
   }
@@ -120,8 +132,15 @@ public final class BpmnStateBehavior {
     }
   }
 
+  public void spawnToken(final BpmnElementContext context) {
+    final ElementInstance flowScopeInstance = getFlowScopeInstance(context);
+    if (flowScopeInstance != null) {
+      elementInstanceState.spawnToken(flowScopeInstance.getKey());
+    }
+  }
+
   // replaces BpmnStepContext.getFlowScopeInstance()
-  ElementInstance getFlowScopeInstance(final BpmnElementContext context) {
+  private ElementInstance getFlowScopeInstance(final BpmnElementContext context) {
     return elementInstanceState.getInstance(context.getRecordValue().getFlowScopeKey());
   }
 
@@ -131,5 +150,10 @@ public final class BpmnStateBehavior {
         && flowScopeInstance.getNumberOfActiveTokens() == 2
         && flowScopeInstance.isInterrupted()
         && flowScopeInstance.isActive();
+  }
+
+  public void removeInstance(final BpmnElementContext context) {
+    eventScopeInstanceState.deleteInstance(context.getElementInstanceKey());
+    elementInstanceState.removeInstance(context.getElementInstanceKey());
   }
 }

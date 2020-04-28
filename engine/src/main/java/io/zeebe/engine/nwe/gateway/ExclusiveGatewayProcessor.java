@@ -92,6 +92,7 @@ public class ExclusiveGatewayProcessor implements BpmnElementProcessor<Executabl
       final ExecutableExclusiveGateway element, final BpmnElementContext context) {
     deferredRecordsBehavior.publishDeferredRecords(context);
 
+    // how can this happen on an xor-gateway?
     if (stateBehavior.isLastActiveExecutionPathInScope(context)) {
       stateBehavior.completeFlowScope(context);
     }

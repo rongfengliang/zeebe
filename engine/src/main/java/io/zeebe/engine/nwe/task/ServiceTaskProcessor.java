@@ -136,6 +136,8 @@ public final class ServiceTaskProcessor implements BpmnElementProcessor<Executab
         context.getElementInstanceKey(), context.toStepContext());
 
     stateTransitionBehavior.transitionToCompleted(context);
+
+    // TODO (saig0): shutdown event scope? (sse AbstractHandler#transitionTo)
   }
 
   @Override
@@ -146,6 +148,29 @@ public final class ServiceTaskProcessor implements BpmnElementProcessor<Executab
     // consume token
     // remove from event scope instance state
     // remove from element instance state
+
+    final var outgoingSequenceFlows = element.getOutgoing();
+    if (outgoingSequenceFlows.isEmpty()) {
+
+      if (stateBehavior.isLastActiveExecutionPathInScope(context)) {
+        stateBehavior.completeFlowScope(context);
+
+        // TODO (saig0): update state because of the step guards
+        stateBehavior.updateFlowScopeInstance(
+            context,
+            elementInstance -> elementInstance.setState(WorkflowInstanceIntent.ELEMENT_COMPLETING));
+      }
+
+    } else {
+      outgoingSequenceFlows.forEach(
+          sequenceFlow -> {
+            stateTransitionBehavior.takeSequenceFlow(context, sequenceFlow);
+            stateBehavior.spawnToken(context);
+          });
+    }
+
+    stateBehavior.consumeToken(context);
+    stateBehavior.removeInstance(context);
   }
 
   @Override
@@ -172,6 +197,8 @@ public final class ServiceTaskProcessor implements BpmnElementProcessor<Executab
     // TODO (saig0): update state because of the step guards
     elementInstance.setState(WorkflowInstanceIntent.ELEMENT_TERMINATED);
     stateBehavior.updateElementInstance(elementInstance);
+
+    // TODO (saig0): shutdown event scope? (sse AbstractHandler#transitionTo)
   }
 
   @Override

@@ -12,8 +12,8 @@ import io.zeebe.engine.processor.workflow.WorkflowInstanceLifecycle;
 import io.zeebe.engine.state.ZeebeState;
 import io.zeebe.engine.state.instance.ElementInstance;
 import io.zeebe.engine.state.instance.ElementInstanceState;
-import io.zeebe.engine.state.instance.IndexedRecord;
 import io.zeebe.engine.state.instance.EventScopeInstanceState;
+import io.zeebe.engine.state.instance.IndexedRecord;
 import io.zeebe.engine.state.instance.JobState;
 import io.zeebe.protocol.impl.record.value.workflowinstance.WorkflowInstanceRecord;
 import io.zeebe.protocol.record.intent.WorkflowInstanceIntent;
@@ -140,8 +140,8 @@ public final class BpmnStateBehavior {
   }
 
   // replaces BpmnStepContext.getFlowScopeInstance()
-  private ElementInstance getFlowScopeInstance(final BpmnElementContext context) {
-    return elementInstanceState.getInstance(context.getRecordValue().getFlowScopeKey());
+  public ElementInstance getFlowScopeInstance(final BpmnElementContext context) {
+    return elementInstanceState.getInstance(context.getFlowScopeKey());
   }
 
   // from ElementTerminatedHandler

@@ -127,15 +127,31 @@ public final class ServiceTaskProcessor implements BpmnElementProcessor<Executab
 
   @Override
   public void onCompleting(final ExecutableServiceTask element, final BpmnElementContext context) {
+
     // for all activities:
     // output mappings
     // unsubscribe from events
 
-    variableMappingBehavior.applyOutputMappings(context.toStepContext());
+    // TODO (saig0): extract guard check and perform also on other transitions
+    final var flowScopeInstance = stateBehavior.getFlowScopeInstance(context);
+    if (!flowScopeInstance.isActive()) {
+      return;
+    }
+
+    final var success = variableMappingBehavior.applyOutputMappings(context.toStepContext());
+    if (!success) {
+      return;
+    }
+
     eventSubscriptionBehavior.unsubscribeFromEvents(
         context.getElementInstanceKey(), context.toStepContext());
 
     stateTransitionBehavior.transitionToCompleted(context);
+
+    // TODO (saig0): update state because of the step guards
+    stateBehavior.updateElementInstance(
+        context,
+        elementInstance -> elementInstance.setState(WorkflowInstanceIntent.ELEMENT_COMPLETED));
 
     // TODO (saig0): shutdown event scope? (sse AbstractHandler#transitionTo)
   }

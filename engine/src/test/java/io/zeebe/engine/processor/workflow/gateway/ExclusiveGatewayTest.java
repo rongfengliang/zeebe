@@ -346,22 +346,16 @@ public final class ExclusiveGatewayTest {
     ENGINE.workflowInstance().withInstanceKey(workflowInstanceKey).cancel();
 
     // then
-    final List<Record<WorkflowInstanceRecordValue>> completedEvents =
-        RecordingExporter.workflowInstanceRecords()
-            .onlyEvents()
-            .withWorkflowInstanceKey(workflowInstanceKey)
-            .skipUntil(r -> r.getValue().getElementId().equals("xor"))
-            .limitToWorkflowInstanceTerminated()
-            .collect(Collectors.toList());
-
-    assertThat(completedEvents)
-        .extracting(Record::getIntent)
-        .containsExactly(
-            WorkflowInstanceIntent.ELEMENT_ACTIVATING,
-            WorkflowInstanceIntent.ELEMENT_TERMINATING,
-            WorkflowInstanceIntent.ELEMENT_TERMINATING,
-            WorkflowInstanceIntent.ELEMENT_TERMINATED,
-            WorkflowInstanceIntent.ELEMENT_TERMINATED);
+    assertThat(
+            RecordingExporter.workflowInstanceRecords()
+                .withWorkflowInstanceKey(workflowInstanceKey)
+                .limitToWorkflowInstanceTerminated())
+        .extracting(r -> tuple(r.getValue().getBpmnElementType(), r.getIntent()))
+        .containsSubsequence(
+            tuple(BpmnElementType.PROCESS, WorkflowInstanceIntent.ELEMENT_TERMINATING),
+            tuple(BpmnElementType.EXCLUSIVE_GATEWAY, WorkflowInstanceIntent.ELEMENT_TERMINATING),
+            tuple(BpmnElementType.EXCLUSIVE_GATEWAY, WorkflowInstanceIntent.ELEMENT_TERMINATED),
+            tuple(BpmnElementType.PROCESS, WorkflowInstanceIntent.ELEMENT_TERMINATED));
 
     assertThat(
             RecordingExporter.incidentRecords()

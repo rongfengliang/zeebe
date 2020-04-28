@@ -112,7 +112,21 @@ public class ExclusiveGatewayProcessor implements BpmnElementProcessor<Executabl
 
   @Override
   public void onTerminated(
-      final ExecutableExclusiveGateway element, final BpmnElementContext context) {}
+      final ExecutableExclusiveGateway element, final BpmnElementContext context) {
+    // for all activities:
+    // publish deferred events (i.e. an occurred boundary event)
+    deferredRecordsBehavior.publishDeferredRecords(context);
+
+    // resolve incidents
+    incidentBehavior.resolveIncidents(context);
+
+    // terminate scope if scope is terminated and last active token
+    // publish deferred event if an interrupting event sub-process was triggered
+    stateBehavior.terminateFlowScope(context); // interruption is part of this (still)
+
+    // consume token
+    stateBehavior.consumeToken(context);
+  }
 
   @Override
   public void onEventOccurred(

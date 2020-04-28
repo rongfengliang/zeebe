@@ -8,12 +8,15 @@
 package io.zeebe.engine.nwe.behavior;
 
 import io.zeebe.engine.nwe.BpmnElementContext;
+import io.zeebe.engine.processor.workflow.WorkflowInstanceLifecycle;
 import io.zeebe.engine.state.ZeebeState;
 import io.zeebe.engine.state.instance.ElementInstance;
 import io.zeebe.engine.state.instance.ElementInstanceState;
+import io.zeebe.engine.state.instance.IndexedRecord;
 import io.zeebe.engine.state.instance.JobState;
 import io.zeebe.protocol.impl.record.value.workflowinstance.WorkflowInstanceRecord;
 import io.zeebe.protocol.record.intent.WorkflowInstanceIntent;
+import java.util.Optional;
 import java.util.function.Consumer;
 
 public final class BpmnStateBehavior {
@@ -83,8 +86,50 @@ public final class BpmnStateBehavior {
     }
   }
 
+  // from ElementTerminatedHandler (with small changes)
+  public void terminateFlowScope(final BpmnElementContext context) {
+    final ElementInstance flowScopeInstance = getFlowScopeInstance(context);
+    final boolean isScopeTerminating =
+        flowScopeInstance != null
+            && WorkflowInstanceLifecycle.canTransition(
+                flowScopeInstance.getState(), WorkflowInstanceIntent.ELEMENT_TERMINATED);
+    if (isScopeTerminating && isLastActiveExecutionPathInScope(context)) {
+      streamWriter.appendFollowUpEvent(
+          flowScopeInstance.getKey(),
+          WorkflowInstanceIntent.ELEMENT_TERMINATED,
+          flowScopeInstance.getValue());
+    } else if (wasInterrupted(flowScopeInstance)) {
+      publishInterruptingEventSubproc(context, flowScopeInstance);
+    }
+  }
+
+  // from ElementTerminatedHandler (with small changes)
+  private void publishInterruptingEventSubproc(
+      final BpmnElementContext context, final ElementInstance flowScopeInstance) {
+    final Optional<IndexedRecord> eventSubprocOptional =
+        elementInstanceState.getDeferredRecords(flowScopeInstance.getKey()).stream()
+            .filter(r -> r.getKey() == flowScopeInstance.getInterruptingEventKey())
+            .findFirst();
+
+    if (eventSubprocOptional.isPresent()) {
+      final IndexedRecord eventSubproc = eventSubprocOptional.get();
+
+      eventSubproc.getValue().setFlowScopeKey(flowScopeInstance.getKey());
+      streamWriter.appendFollowUpEvent(
+          eventSubproc.getKey(), eventSubproc.getState(), eventSubproc.getValue());
+    }
+  }
+
   // replaces BpmnStepContext.getFlowScopeInstance()
   ElementInstance getFlowScopeInstance(final BpmnElementContext context) {
     return elementInstanceState.getInstance(context.getRecordValue().getFlowScopeKey());
+  }
+
+  // from ElementTerminatedHandler
+  private boolean wasInterrupted(final ElementInstance flowScopeInstance) {
+    return flowScopeInstance != null
+        && flowScopeInstance.getNumberOfActiveTokens() == 2
+        && flowScopeInstance.isInterrupted()
+        && flowScopeInstance.isActive();
   }
 }

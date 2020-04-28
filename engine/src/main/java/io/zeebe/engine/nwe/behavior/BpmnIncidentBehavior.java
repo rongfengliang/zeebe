@@ -69,4 +69,11 @@ public final class BpmnIncidentBehavior {
 
     streamWriter.appendNewCommand(IncidentIntent.CREATE, incidentCommand);
   }
+
+  // from IncidentResolver
+  public void resolveIncidents(final BpmnElementContext context) {
+    incidentState.forExistingWorkflowIncident(
+        context.getElementInstanceKey(),
+        (record, key) -> streamWriter.appendFollowUpEvent(key, IncidentIntent.RESOLVED, record));
+  }
 }

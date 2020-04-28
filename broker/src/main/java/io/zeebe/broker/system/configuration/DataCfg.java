@@ -9,6 +9,7 @@ package io.zeebe.broker.system.configuration;
 
 import static io.zeebe.util.StringUtil.LIST_SANITIZER;
 
+import io.atomix.storage.StorageLevel;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
@@ -25,6 +26,8 @@ public final class DataCfg implements ConfigurationEntry {
   private Duration snapshotPeriod = Duration.ofMinutes(15);
 
   private int logIndexDensity = 100;
+
+  private boolean useMmap = false;
 
   @Override
   public void init(final BrokerCfg globalConfig, final String brokerBase) {
@@ -64,8 +67,20 @@ public final class DataCfg implements ConfigurationEntry {
     return logIndexDensity;
   }
 
-  public void setLogIndexDensity(int logIndexDensity) {
+  public void setLogIndexDensity(final int logIndexDensity) {
     this.logIndexDensity = logIndexDensity;
+  }
+
+  public boolean useMmap() {
+    return useMmap;
+  }
+
+  public void setUseMmap(final boolean useMmap) {
+    this.useMmap = useMmap;
+  }
+
+  public StorageLevel getAtomixStorageLevel() {
+    return useMmap() ? StorageLevel.MAPPED : StorageLevel.DISK;
   }
 
   @Override
@@ -81,6 +96,8 @@ public final class DataCfg implements ConfigurationEntry {
         + '\''
         + ", logIndexDensity="
         + logIndexDensity
+        + ", useMmap="
+        + useMmap
         + '}';
   }
 }

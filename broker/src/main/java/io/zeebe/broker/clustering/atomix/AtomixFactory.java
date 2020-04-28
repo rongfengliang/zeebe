@@ -32,6 +32,7 @@ import java.util.List;
 import java.util.Optional;
 import org.agrona.IoUtil;
 import org.slf4j.Logger;
+import org.springframework.util.unit.DataSize;
 
 public final class AtomixFactory {
   public static final String GROUP_NAME = "raft-partition";
@@ -97,13 +98,15 @@ public final class AtomixFactory {
                 (raftContext, threadContext, threadContextFactory) ->
                     new ZeebeRaftStateMachine(raftContext))
             .withSnapshotStoreFactory(new DbSnapshotStoreFactory())
+            .withStorageLevel(dataCfg.getAtomixStorageLevel())
             .withFlushOnCommit();
 
     // by default, the Atomix max entry size is 1 MB
     final int maxMessageSize = (int) networkCfg.getMaxMessageSizeInBytes();
     partitionGroupBuilder.withMaxEntrySize(maxMessageSize);
 
-    Optional.ofNullable(dataCfg.getLogSegmentSizeInBytes())
+    Optional.ofNullable(dataCfg.getLogSegmentSize())
+        .map(DataSize::toBytes)
         .ifPresent(
             segmentSize -> {
               if (segmentSize < maxMessageSize) {

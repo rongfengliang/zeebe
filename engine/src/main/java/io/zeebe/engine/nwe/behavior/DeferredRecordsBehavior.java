@@ -47,6 +47,10 @@ public class DeferredRecordsBehavior {
         elementInstanceState.getInstance(context.getRecordValue().getFlowScopeKey());
     for (final IndexedRecord record : deferredRecords) {
       record.getValue().setFlowScopeKey(flowScopeInstance.getKey());
+      if (record.getState().equals(WorkflowInstanceIntent.ELEMENT_ACTIVATING)) {
+        elementInstanceState.newInstance(
+            flowScopeInstance, record.getKey(), record.getValue(), record.getState());
+      }
       streamWriter.appendFollowUpEvent(record.getKey(), record.getState(), record.getValue());
       elementInstanceState.spawnToken(flowScopeInstance.getKey());
     }

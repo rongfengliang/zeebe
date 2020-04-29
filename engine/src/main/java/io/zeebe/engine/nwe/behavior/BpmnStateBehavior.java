@@ -110,6 +110,10 @@ public final class BpmnStateBehavior {
           flowScopeInstance.getKey(),
           WorkflowInstanceIntent.ELEMENT_TERMINATED,
           flowScopeInstance.getValue());
+      // TODO (saig0): update state because of the step guards
+      flowScopeInstance.setState(WorkflowInstanceIntent.ELEMENT_TERMINATED);
+      updateElementInstance(flowScopeInstance);
+
     } else if (wasInterrupted(flowScopeInstance)) {
       publishInterruptingEventSubproc(context, flowScopeInstance);
     }
@@ -124,11 +128,14 @@ public final class BpmnStateBehavior {
             .findFirst();
 
     if (eventSubprocOptional.isPresent()) {
-      final IndexedRecord eventSubproc = eventSubprocOptional.get();
+      final IndexedRecord record = eventSubprocOptional.get();
 
-      eventSubproc.getValue().setFlowScopeKey(flowScopeInstance.getKey());
-      streamWriter.appendFollowUpEvent(
-          eventSubproc.getKey(), eventSubproc.getState(), eventSubproc.getValue());
+      record.getValue().setFlowScopeKey(flowScopeInstance.getKey());
+      if (record.getState().equals(WorkflowInstanceIntent.ELEMENT_ACTIVATING)) {
+        elementInstanceState.newInstance(
+            flowScopeInstance, record.getKey(), record.getValue(), record.getState());
+      }
+      streamWriter.appendFollowUpEvent(record.getKey(), record.getState(), record.getValue());
     }
   }
 

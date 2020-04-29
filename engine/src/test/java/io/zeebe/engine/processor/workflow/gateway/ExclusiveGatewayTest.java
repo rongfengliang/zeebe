@@ -315,7 +315,7 @@ public final class ExclusiveGatewayTest {
   }
 
   @Test
-  public void shouldResolveConflictsWhenTerminating() {
+  public void shouldResolveIncidentsWhenTerminating() {
     // given
     final String processId = Strings.newRandomValidBpmnId();
     ENGINE

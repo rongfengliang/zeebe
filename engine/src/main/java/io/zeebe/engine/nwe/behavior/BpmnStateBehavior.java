@@ -89,6 +89,9 @@ public final class BpmnStateBehavior {
         flowScopeInstance.getKey(),
         WorkflowInstanceIntent.ELEMENT_COMPLETING,
         flowScopeInstanceValue);
+    // TODO (saig0): update state because of the step guards
+    flowScopeInstance.setState(WorkflowInstanceIntent.ELEMENT_COMPLETING);
+    updateElementInstance(flowScopeInstance);
   }
 
   public void consumeToken(final BpmnElementContext context) {

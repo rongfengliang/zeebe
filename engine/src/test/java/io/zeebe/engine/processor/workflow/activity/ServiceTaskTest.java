@@ -202,7 +202,7 @@ public final class ServiceTaskTest {
   }
 
   @Test
-  public void shouldResolveConflictsWhenTerminating() {
+  public void shouldResolveIncidentsWhenTerminating() {
     // given
     ENGINE
         .deployment()

@@ -55,7 +55,7 @@ public final class MultiInstanceActivityTransformer implements ModelElementTrans
       multiInstanceBody.bindLifecycleState(
           WorkflowInstanceIntent.ELEMENT_ACTIVATING, BpmnStep.BPMN_ELEMENT_PROCESSOR);
       multiInstanceBody.bindLifecycleState(
-          WorkflowInstanceIntent.ELEMENT_ACTIVATED, BpmnStep.MULTI_INSTANCE_ACTIVATED);
+          WorkflowInstanceIntent.ELEMENT_ACTIVATED, BpmnStep.BPMN_ELEMENT_PROCESSOR);
 
       multiInstanceBody.bindLifecycleState(
           WorkflowInstanceIntent.ELEMENT_COMPLETING, BpmnStep.MULTI_INSTANCE_COMPLETING);

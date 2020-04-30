@@ -10,7 +10,9 @@ package io.zeebe.engine.nwe.behavior;
 import io.zeebe.engine.nwe.BpmnElementContext;
 import io.zeebe.engine.processor.KeyGenerator;
 import io.zeebe.engine.processor.TypedStreamWriter;
+import io.zeebe.engine.processor.workflow.deployment.model.element.ExecutableFlowElement;
 import io.zeebe.engine.processor.workflow.deployment.model.element.ExecutableSequenceFlow;
+import io.zeebe.engine.state.instance.ElementInstance;
 import io.zeebe.protocol.record.intent.WorkflowInstanceIntent;
 
 public final class BpmnStateTransitionBehavior {
@@ -73,5 +75,23 @@ public final class BpmnStateTransitionBehavior {
 
     streamWriter.appendNewEvent(
         keyGenerator.nextKey(), WorkflowInstanceIntent.SEQUENCE_FLOW_TAKEN, record);
+  }
+
+  public ElementInstance activateChildInstance(
+      final BpmnElementContext context, final ExecutableFlowElement childElement) {
+
+    final var childInstanceRecord =
+        context
+            .getRecordValue()
+            .setFlowScopeKey(context.getElementInstanceKey())
+            .setElementId(childElement.getId())
+            .setBpmnElementType(childElement.getElementType());
+
+    final var childInstanceKey = keyGenerator.nextKey();
+
+    streamWriter.appendNewEvent(
+        childInstanceKey, WorkflowInstanceIntent.ELEMENT_ACTIVATING, childInstanceRecord);
+
+    return stateBehavior.createChildElementInstance(context, childInstanceKey, childInstanceRecord);
   }
 }

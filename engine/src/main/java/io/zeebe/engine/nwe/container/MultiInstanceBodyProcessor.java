@@ -12,7 +12,6 @@ import io.zeebe.engine.processor.workflow.deployment.model.element.ExecutableMul
 import io.zeebe.engine.state.instance.VariablesState;
 import io.zeebe.msgpack.spec.MsgPackHelper;
 import io.zeebe.msgpack.spec.MsgPackWriter;
-import io.zeebe.protocol.record.intent.WorkflowInstanceIntent;
 import io.zeebe.util.buffer.BufferUtil;
 import java.util.List;
 import java.util.Optional;
@@ -26,13 +25,15 @@ public final class MultiInstanceBodyProcessor
 
   private static final DirectBuffer NIL_VALUE = new UnsafeBuffer(MsgPackHelper.NIL);
   private static final DirectBuffer LOOP_COUNTER_VARIABLE = BufferUtil.wrapString("loopCounter");
-  protected final ExpressionProcessor expressionBehavior;
+
   private final MutableDirectBuffer loopCounterVariableBuffer =
       new UnsafeBuffer(new byte[Long.BYTES + 1]);
   private final DirectBuffer loopCounterVariableView = new UnsafeBuffer(0, 0);
+
   private final MsgPackWriter variableWriter = new MsgPackWriter();
   private final ExpandableArrayBuffer variableBuffer = new ExpandableArrayBuffer();
 
+  private final ExpressionProcessor expressionBehavior;
   private final BpmnStateTransitionBehavior stateTransitionBehavior;
   private final CatchEventBehavior eventSubscriptionBehavior;
   private final BpmnStateBehavior stateBehavior;
@@ -90,11 +91,10 @@ public final class MultiInstanceBodyProcessor
 
     if (loopCharacteristics.isSequential()) {
       final var firstItem = array.get(0);
-      createInnerInstance(element, context, context.getElementInstanceKey(), firstItem);
+      createInnerInstance(element, context, firstItem);
 
     } else {
-      array.forEach(
-          item -> createInnerInstance(element, context, context.getElementInstanceKey(), item));
+      array.forEach(item -> createInnerInstance(element, context, item));
     }
   }
 
@@ -127,20 +127,11 @@ public final class MultiInstanceBodyProcessor
   private void createInnerInstance(
       final ExecutableMultiInstanceBody multiInstanceBody,
       final BpmnElementContext context,
-      final long bodyInstanceKey,
       final DirectBuffer item) {
 
-    final var innerActivityRecord = context.getRecordValue().setFlowScopeKey(bodyInstanceKey);
-
-    // TODO (saig0): avoid using the event output
-    final long elementInstanceKey =
-        context
-            .toStepContext()
-            .getOutput()
-            .appendNewEvent(
-                WorkflowInstanceIntent.ELEMENT_ACTIVATING,
-                innerActivityRecord,
-                multiInstanceBody.getInnerActivity());
+    final var innerInstance =
+        stateTransitionBehavior.activateChildInstance(
+            context, multiInstanceBody.getInnerActivity());
 
     // update loop counters
     final var bodyInstance = stateBehavior.getElementInstance(context);
@@ -148,14 +139,10 @@ public final class MultiInstanceBodyProcessor
     bodyInstance.incrementMultiInstanceLoopCounter();
     stateBehavior.updateElementInstance(bodyInstance);
 
-    // TODO (saig0): avoid using the element instance state from step context
-    final var innerInstance =
-        context.toStepContext().getElementInstanceState().getInstance(elementInstanceKey);
     innerInstance.setMultiInstanceLoopCounter(bodyInstance.getMultiInstanceLoopCounter());
     stateBehavior.updateElementInstance(innerInstance);
 
     // set instance variables
-    final var workflowKey = innerActivityRecord.getWorkflowKey();
     final var loopCharacteristics = multiInstanceBody.getLoopCharacteristics();
 
     loopCharacteristics
@@ -163,7 +150,7 @@ public final class MultiInstanceBodyProcessor
         .ifPresent(
             variableName ->
                 variablesState.setVariableLocal(
-                    elementInstanceKey, workflowKey, variableName, item));
+                    innerInstance.getKey(), context.getWorkflowKey(), variableName, item));
 
     // Output element expressions that are just a variable or nested property of a variable need to
     // be initialised with a nil-value. This makes sure that they are not written at a non-local
@@ -175,11 +162,11 @@ public final class MultiInstanceBodyProcessor
         .ifPresent(
             variableName ->
                 variablesState.setVariableLocal(
-                    elementInstanceKey, workflowKey, variableName, NIL_VALUE));
+                    innerInstance.getKey(), context.getWorkflowKey(), variableName, NIL_VALUE));
 
     variablesState.setVariableLocal(
-        elementInstanceKey,
-        workflowKey,
+        innerInstance.getKey(),
+        context.getWorkflowKey(),
         LOOP_COUNTER_VARIABLE,
         wrapLoopCounter(innerInstance.getMultiInstanceLoopCounter()));
   }

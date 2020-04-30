@@ -173,4 +173,16 @@ public final class BpmnStateBehavior {
   public VariablesState getVariablesState() {
     return variablesState;
   }
+
+  public ElementInstance createChildElementInstance(
+      final BpmnElementContext context,
+      final long childInstanceKey,
+      final WorkflowInstanceRecord childRecord) {
+    final var parentElementInstance = getElementInstance(context);
+    return elementInstanceState.newInstance(
+        parentElementInstance,
+        childInstanceKey,
+        childRecord,
+        WorkflowInstanceIntent.ELEMENT_ACTIVATING);
+  }
 }

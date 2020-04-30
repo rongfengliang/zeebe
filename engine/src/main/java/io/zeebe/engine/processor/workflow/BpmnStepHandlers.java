@@ -227,7 +227,8 @@ public final class BpmnStepHandlers {
             expressionProcessor,
             new IOMappingHelper(expressionProcessor),
             catchEventBehavior,
-            state);
+            state,
+            this::handle);
   }
 
   public void handle(final BpmnStepContext context) {

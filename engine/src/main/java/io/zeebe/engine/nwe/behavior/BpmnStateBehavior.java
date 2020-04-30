@@ -15,6 +15,7 @@ import io.zeebe.engine.state.instance.ElementInstanceState;
 import io.zeebe.engine.state.instance.EventScopeInstanceState;
 import io.zeebe.engine.state.instance.IndexedRecord;
 import io.zeebe.engine.state.instance.JobState;
+import io.zeebe.engine.state.instance.VariablesState;
 import io.zeebe.protocol.impl.record.value.workflowinstance.WorkflowInstanceRecord;
 import io.zeebe.protocol.record.intent.WorkflowInstanceIntent;
 import java.util.Optional;
@@ -24,6 +25,7 @@ public final class BpmnStateBehavior {
 
   private final ElementInstanceState elementInstanceState;
   private final EventScopeInstanceState eventScopeInstanceState;
+  private final VariablesState variablesState;
   private final JobState jobState;
 
   private final TypesStreamWriterProxy streamWriter;
@@ -33,6 +35,7 @@ public final class BpmnStateBehavior {
     final var workflowState = zeebeState.getWorkflowState();
     elementInstanceState = workflowState.getElementInstanceState();
     eventScopeInstanceState = workflowState.getEventScopeInstanceState();
+    variablesState = elementInstanceState.getVariablesState();
     jobState = zeebeState.getJobState();
     streamWriter = streamWriterProxy;
   }
@@ -155,5 +158,9 @@ public final class BpmnStateBehavior {
   public void removeInstance(final BpmnElementContext context) {
     eventScopeInstanceState.deleteInstance(context.getElementInstanceKey());
     elementInstanceState.removeInstance(context.getElementInstanceKey());
+  }
+
+  public VariablesState getVariablesState() {
+    return variablesState;
   }
 }

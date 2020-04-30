@@ -132,6 +132,7 @@ public class RaftContext implements AutoCloseable {
   private volatile long lastApplied;
   private volatile long lastAppliedTerm;
   private volatile boolean started;
+  private volatile boolean onLeaderChange = false;
 
   @SuppressWarnings("unchecked")
   public RaftContext(
@@ -539,6 +540,14 @@ public class RaftContext implements AutoCloseable {
     return leader != null ? cluster.getMember(leader) : null;
   }
 
+  public boolean isOnLeaderChange() {
+    return onLeaderChange;
+  }
+
+  public void setOnLeaderChange(final boolean onLeaderChange) {
+    this.onLeaderChange = onLeaderChange;
+  }
+
   /** Transition handler. */
   public void transition(final RaftServer.Role role) {
     checkThread();
@@ -565,6 +574,8 @@ public class RaftContext implements AutoCloseable {
       throw new IllegalStateException("failed to initialize Raft state", e);
     }
 
+    log.error("Finally transition to role {}", role);
+
     if (this.role.role() == role) {
       if (this.role.role() == Role.LEADER) {
         // It is safe to assume that transition to leader is only complete after the initial entries
@@ -574,11 +585,17 @@ public class RaftContext implements AutoCloseable {
             () -> {
               if (this.role == leaderRole) { // ensure no other role change happened in between
                 notifyRoleChangeListeners();
+              } else {
+                log.error(
+                    "How this could happen? Current role {} is no longer leader after committing entries",
+                    role);
               }
             });
       } else {
         notifyRoleChangeListeners();
       }
+    } else {
+      log.error("This role {} was replaced by {} ", role, this.role.role());
     }
   }
 
@@ -612,6 +629,7 @@ public class RaftContext implements AutoCloseable {
         return new CandidateRole(this);
       case LEADER:
         raftRoleMetrics.becomingLeader();
+        onLeaderChange = true;
         return new LeaderRole(this);
       default:
         throw new AssertionError();

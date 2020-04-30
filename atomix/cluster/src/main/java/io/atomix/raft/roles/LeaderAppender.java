@@ -195,6 +195,14 @@ final class LeaderAppender extends AbstractAppender {
     // Reset the member failure count and update the member's availability status if necessary.
     succeedAttempt(member);
 
+    if (raft.isOnLeaderChange()) {
+      log.error(
+          "Append request {} was sucessfull for member {} returned response {}",
+          request,
+          member,
+          response);
+    }
+
     // If replication succeeded then trigger commit futures.
     if (response.succeeded()) {
       member.appendSucceeded();
@@ -245,6 +253,9 @@ final class LeaderAppender extends AbstractAppender {
       return;
     }
 
+    if (raft.isOnLeaderChange()) {
+      log.error("Append entries on leader change to member {}", member);
+    }
     // If prior requests to the member have failed, build an empty append request to send to the
     // member
     // to prevent having to read from disk to configure, install, or append to an unavailable

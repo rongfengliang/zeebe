@@ -113,6 +113,8 @@ public final class LeaderRole extends ActiveRole implements ZeebeLogAppender {
     // configuration.
     appendInitialEntries().join();
 
+    log.error("Initial entries have been appended!!!");
+
     // Commit the initial leader entries.
     commitInitialEntriesFuture = commitInitialEntries();
 
@@ -956,6 +958,11 @@ public final class LeaderRole extends ActiveRole implements ZeebeLogAppender {
     // ensure
     // that the commitIndex is not increased until the no-op entry (appender.index()) is committed.
     final CompletableFuture<Void> future = new CompletableFuture<>();
+
+    log.error(
+        "Try to commit initial entries with index {}, current commit idx {}",
+        appender.getIndex(),
+        raft.getCommitIndex());
     appender
         .appendEntries(appender.getIndex())
         .whenComplete(
@@ -963,6 +970,8 @@ public final class LeaderRole extends ActiveRole implements ZeebeLogAppender {
               raft.checkThread();
               if (isRunning()) {
                 if (error == null) {
+
+                  log.error("Initial entries have been committed!!!");
                   raft.getServiceManager().apply(resultIndex);
                   future.complete(null);
                 } else {
@@ -970,6 +979,8 @@ public final class LeaderRole extends ActiveRole implements ZeebeLogAppender {
                   raft.setLeader(null);
                   raft.transition(RaftServer.Role.FOLLOWER);
                 }
+              } else {
+                log.error("wtf where are not running");
               }
             });
     return future;
@@ -1470,8 +1481,13 @@ public final class LeaderRole extends ActiveRole implements ZeebeLogAppender {
     commitInitialEntriesFuture.whenComplete(
         (v, error) -> {
           if (error == null) {
+            log.error("Init entries where committed");
             runnable.run();
+          } else {
+            log.error("How this could happen? failed commit init entries", error);
           }
+
+          raft.setOnLeaderChange(false);
         });
   }
 }

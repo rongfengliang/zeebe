@@ -15,6 +15,7 @@ import io.zeebe.engine.nwe.behavior.BpmnStateBehavior;
 import io.zeebe.engine.nwe.behavior.BpmnStateTransitionBehavior;
 import io.zeebe.engine.nwe.behavior.DeferredRecordsBehavior;
 import io.zeebe.engine.nwe.behavior.TypesStreamWriterProxy;
+import io.zeebe.engine.nwe.container.MultiInstanceBodyProcessor;
 import io.zeebe.engine.nwe.gateway.ExclusiveGatewayProcessor;
 import io.zeebe.engine.nwe.task.ServiceTaskProcessor;
 import io.zeebe.engine.processor.SideEffectProducer;
@@ -22,6 +23,7 @@ import io.zeebe.engine.processor.TypedRecord;
 import io.zeebe.engine.processor.TypedRecordProcessor;
 import io.zeebe.engine.processor.TypedResponseWriter;
 import io.zeebe.engine.processor.TypedStreamWriter;
+import io.zeebe.engine.processor.workflow.BpmnStepContext;
 import io.zeebe.engine.processor.workflow.CatchEventBehavior;
 import io.zeebe.engine.processor.workflow.ExpressionProcessor;
 import io.zeebe.engine.processor.workflow.deployment.model.element.ExecutableFlowElement;
@@ -47,22 +49,28 @@ public final class BpmnStreamProcessor implements TypedRecordProcessor<WorkflowI
 
   private final Map<BpmnElementType, BpmnElementProcessor<?>> processors;
 
+  private final Consumer<BpmnStepContext<?>> fallback;
+
   public BpmnStreamProcessor(
       final ExpressionProcessor expressionProcessor,
       final IOMappingHelper ioMappingHelper,
       final CatchEventBehavior catchEventBehavior,
-      final ZeebeState zeebeState) {
+      final ZeebeState zeebeState,
+      final Consumer<BpmnStepContext<?>> fallback) {
 
     workflowState = zeebeState.getWorkflowState();
+    this.fallback = fallback;
 
+    final var stateBehavior = new BpmnStateBehavior(zeebeState, streamWriterProxy);
     final BpmnBehaviors bpmnBehaviors =
         new BpmnBehaviorsImpl(
             expressionProcessor,
             ioMappingHelper,
             catchEventBehavior,
             new BpmnIncidentBehavior(zeebeState, streamWriterProxy),
-            new BpmnStateBehavior(zeebeState, streamWriterProxy),
-            new BpmnStateTransitionBehavior(streamWriterProxy, zeebeState.getKeyGenerator()),
+            stateBehavior,
+            new BpmnStateTransitionBehavior(
+                streamWriterProxy, zeebeState.getKeyGenerator(), stateBehavior),
             streamWriterProxy,
             new DeferredRecordsBehavior(zeebeState, streamWriterProxy));
 
@@ -71,7 +79,9 @@ public final class BpmnStreamProcessor implements TypedRecordProcessor<WorkflowI
             BpmnElementType.SERVICE_TASK,
             new ServiceTaskProcessor(bpmnBehaviors),
             BpmnElementType.EXCLUSIVE_GATEWAY,
-            new ExclusiveGatewayProcessor(bpmnBehaviors));
+            new ExclusiveGatewayProcessor(bpmnBehaviors),
+            BpmnElementType.MULTI_INSTANCE_BODY,
+            new MultiInstanceBodyProcessor(bpmnBehaviors));
 
     context = new BpmnElementContextImpl(zeebeState);
   }
@@ -80,8 +90,9 @@ public final class BpmnStreamProcessor implements TypedRecordProcessor<WorkflowI
       final BpmnElementType bpmnElementType) {
     final var processor = (BpmnElementProcessor<T>) processors.get(bpmnElementType);
     if (processor == null) {
-      throw new UnsupportedOperationException(
-          String.format("no processor found for BPMN element type '%s'", bpmnElementType));
+      LOGGER.info("[NEW] No processor found for BPMN element type '{}'", bpmnElementType);
+      //      throw new UnsupportedOperationException(
+      //          String.format("no processor found for BPMN element type '%s'", bpmnElementType));
     }
     return processor;
   }
@@ -109,6 +120,12 @@ public final class BpmnStreamProcessor implements TypedRecordProcessor<WorkflowI
     streamWriterProxy.wrap(streamWriter);
     context.init(record, intent, element, streamWriterProxy, sideEffect);
 
+    if (processor == null) {
+      // TODO (saig0): remove multi-instance fallback
+      fallback.accept(context.toStepContext());
+      return;
+    }
+
     // process the event
     processEvent(intent, processor, element);
   }
@@ -124,7 +141,8 @@ public final class BpmnStreamProcessor implements TypedRecordProcessor<WorkflowI
             .getWorkflow()
             .getElementById(recordValue.getElementIdBuffer());
 
-    if (element instanceof ExecutableMultiInstanceBody) {
+    if (element instanceof ExecutableMultiInstanceBody
+        && recordValue.getBpmnElementType() != BpmnElementType.MULTI_INSTANCE_BODY) {
       final var multiInstanceBody = (ExecutableMultiInstanceBody) element;
       return multiInstanceBody.getInnerActivity();
     }

@@ -17,23 +17,40 @@ public final class BpmnStateTransitionBehavior {
 
   private final TypedStreamWriter streamWriter;
   private final KeyGenerator keyGenerator;
+  private final BpmnStateBehavior stateBehavior;
 
   public BpmnStateTransitionBehavior(
-      final TypedStreamWriter streamWriter, final KeyGenerator keyGenerator) {
+      final TypedStreamWriter streamWriter,
+      final KeyGenerator keyGenerator,
+      final BpmnStateBehavior stateBehavior) {
     this.streamWriter = streamWriter;
     this.keyGenerator = keyGenerator;
+    this.stateBehavior = stateBehavior;
   }
 
   public void transitionToActivated(final BpmnElementContext context) {
     transitionTo(context, WorkflowInstanceIntent.ELEMENT_ACTIVATED);
+
+    // TODO (saig0): update state because of the step guards
+    stateBehavior.updateElementInstance(
+        context,
+        elementInstance -> elementInstance.setState(WorkflowInstanceIntent.ELEMENT_ACTIVATED));
   }
 
   public void transitionToTerminated(final BpmnElementContext context) {
     transitionTo(context, WorkflowInstanceIntent.ELEMENT_TERMINATED);
+
+    stateBehavior.updateElementInstance(
+        context,
+        elementInstance -> elementInstance.setState(WorkflowInstanceIntent.ELEMENT_TERMINATED));
   }
 
   public void transitionToCompleting(final BpmnElementContext context) {
     transitionTo(context, WorkflowInstanceIntent.ELEMENT_COMPLETING);
+
+    stateBehavior.updateElementInstance(
+        context,
+        elementInstance -> elementInstance.setState(WorkflowInstanceIntent.ELEMENT_COMPLETING));
   }
 
   public void transitionToCompleted(final BpmnElementContext context) {

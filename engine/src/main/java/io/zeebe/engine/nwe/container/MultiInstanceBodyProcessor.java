@@ -1,3 +1,10 @@
+/*
+ * Copyright Camunda Services GmbH and/or licensed to Camunda Services GmbH under
+ * one or more contributor license agreements. See the NOTICE file distributed
+ * with this work for additional information regarding copyright ownership.
+ * Licensed under the Zeebe Community License 1.0. You may not use this file
+ * except in compliance with the Zeebe Community License 1.0.
+ */
 package io.zeebe.engine.nwe.container;
 
 import io.zeebe.el.Expression;
@@ -194,12 +201,6 @@ public final class MultiInstanceBodyProcessor
 
     final var length = variableWriter.getOffset();
 
-    variablesState.setVariableLocal(
-        context.getElementInstanceKey(),
-        context.getWorkflowKey(),
-        variableName,
-        variableBuffer,
-        0,
-        length);
+    stateBehavior.setLocalVariable(context, variableName, variableBuffer, 0, length);
   }
 }

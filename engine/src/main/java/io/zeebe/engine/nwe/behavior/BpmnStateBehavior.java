@@ -20,6 +20,7 @@ import io.zeebe.protocol.impl.record.value.workflowinstance.WorkflowInstanceReco
 import io.zeebe.protocol.record.intent.WorkflowInstanceIntent;
 import java.util.Optional;
 import java.util.function.Consumer;
+import org.agrona.DirectBuffer;
 
 public final class BpmnStateBehavior {
 
@@ -184,5 +185,27 @@ public final class BpmnStateBehavior {
         childInstanceKey,
         childRecord,
         WorkflowInstanceIntent.ELEMENT_ACTIVATING);
+  }
+
+  public void setLocalVariable(
+      final BpmnElementContext context,
+      final DirectBuffer variableName,
+      final DirectBuffer variableValue) {
+    setLocalVariable(context, variableName, variableValue, 0, variableValue.capacity());
+  }
+
+  public void setLocalVariable(
+      final BpmnElementContext context,
+      final DirectBuffer variableName,
+      final DirectBuffer variableValue,
+      final int valueOffset,
+      final int valueLength) {
+    variablesState.setVariableLocal(
+        context.getElementInstanceKey(),
+        context.getWorkflowKey(),
+        variableName,
+        variableValue,
+        valueOffset,
+        valueLength);
   }
 }
